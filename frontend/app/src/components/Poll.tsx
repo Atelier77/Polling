@@ -1,17 +1,40 @@
-// src/components/Poll.js
-import React, { useState, useEffect } from 'react';
+// C:\К_3\FS\frontend\app\src\components\Poll.tsx
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import './Poll.css';
 
-const Poll = ({ user }) => {
-  const { pollId } = useParams();
+interface Option {
+  id: number;
+  text: string;
+  votes: number;
+}
+
+interface Poll {
+  id: number;
+  title: string;
+  description: string;
+  end_date: string;
+  total_votes: number;
+  options?: Option[];
+}
+
+interface PollProps {
+  user: {
+    name?: string;
+    id?: string | number;
+    faculty?: string;
+  } | null;
+}
+
+const Poll = ({ user }: PollProps) => {
+  const { pollId } = useParams<{ pollId: string }>();
   const navigate = useNavigate();
-  const [poll, setPoll] = useState(null);
-  const [selectedOption, setSelectedOption] = useState(null);
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPollData();
@@ -21,14 +44,14 @@ const Poll = ({ user }) => {
   const loadPollData = async () => {
     try {
       setLoading(true);
-      const pollData = await DataService.getPollById(pollId);
+      const pollData = await DataService.getPollById(Number(pollId));
       if (pollData) {
         setPoll(pollData);
       } else {
         setError('Опрос не найден');
       }
-    } catch (error) {
-      console.error('Error loading poll:', error);
+    } catch (err) {
+      console.error('Error loading poll:', err);
       setError('Ошибка при загрузке опроса');
     } finally {
       setLoading(false);
@@ -37,12 +60,12 @@ const Poll = ({ user }) => {
 
   const checkIfVoted = async () => {
     try {
-      const voteCheck = await DataService.checkVote(pollId);
+      const voteCheck = await DataService.checkVote(Number(pollId));
       if (voteCheck.has_voted) {
         navigate(`/results/${pollId}`);
       }
-    } catch (error) {
-      console.warn('Could not check vote status:', error);
+    } catch (err) {
+      console.warn('Could not check vote status:', err);
     }
   };
 
@@ -54,23 +77,23 @@ const Poll = ({ user }) => {
 
     try {
       setVoting(true);
-      const result = await DataService.vote(pollId, selectedOption);
+      const result = await DataService.vote(Number(pollId), selectedOption);
       
       if (result.success) {
         navigate(`/results/${pollId}`);
       } else {
         throw new Error('Ошибка при голосовании');
       }
-    } catch (error) {
-      console.error('Error voting:', error);
+    } catch (err) {
+      console.error('Error voting:', err);
       alert('Ошибка при отправке голоса. Попробуйте еще раз.');
     } finally {
       setVoting(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    const options = { 
+  const formatDate = (dateString: string): string => {
+    const options: Intl.DateTimeFormatOptions = { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric',
@@ -130,7 +153,6 @@ const Poll = ({ user }) => {
     <div className="poll-container">
       <Header user={user} />
       
-      {/* Poll Info Card */}
       <div className="poll-info-card">
         <div className="poll-header">
           <h1 className="poll-title">{poll.title}</h1>
@@ -152,7 +174,6 @@ const Poll = ({ user }) => {
         </div>
       </div>
 
-      {/* Options Section */}
       <div className="options-section">
         <div className="options-header">
           <h2>Выберите вариант ответа:</h2>
@@ -160,7 +181,7 @@ const Poll = ({ user }) => {
         </div>
         
         <div className="option-cards">
-          {poll.options && poll.options.map((option, index) => (
+          {poll.options?.map((option, index) => (
             <div
               key={option.id}
               className={`option-card ${selectedOption === option.id ? 'selected' : ''}`}
@@ -198,7 +219,15 @@ const Poll = ({ user }) => {
   );
 };
 
-const Header = ({ user }) => (
+interface HeaderProps {
+  user: {
+    name?: string;
+    id?: string | number;
+    faculty?: string;
+  } | null;
+}
+
+const Header = ({ user }: HeaderProps) => (
   <header className="header">
     <div className="header-content">
       <Link to="/dashboard" className="back-btn">

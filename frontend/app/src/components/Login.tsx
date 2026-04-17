@@ -1,12 +1,16 @@
-// src/components/Login.js
-import React, { useState } from 'react';
+// C:\К_3\FS\frontend\app\src\components\Login.tsx
+import { useState, ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import './Login.css';
 
-const Login = ({ onLogin }) => {
+interface LoginProps {
+  onLogin: (studentId: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+const Login = ({ onLogin }: LoginProps) => {
   const [studentId, setStudentId] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!studentId.trim()) {
@@ -30,9 +34,9 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleSubmit(e);
+      handleSubmit(e as unknown as FormEvent<HTMLFormElement>);
     }
   };
 
@@ -52,7 +56,7 @@ const Login = ({ onLogin }) => {
               type="text" 
               id="studentId"
               value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setStudentId(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Введите номер студенческого" 
               disabled={loading}

@@ -1,4 +1,3 @@
-# backend/src/api/routes/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated

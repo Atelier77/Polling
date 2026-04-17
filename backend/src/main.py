@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from contextlib import asynccontextmanager
 import traceback
 
-from src.api.routes import auth, polls, votes
+from src.api.routes import auth, polls, votes, files
 from src.database.connection import create_tables
 from src.config import settings
 
@@ -30,13 +30,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# ========== CORS MIDDLEWARE ==========
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        # добавьте другие если нужно
     ],
     allow_credentials=False,
     allow_methods=["*"],
@@ -44,7 +42,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# ========== EXCEPTION HANDLERS ==========
 @app.exception_handler(ResponseValidationError)
 async def response_validation_handler(request: Request, exc: ResponseValidationError):
     """Обработчик ошибок валидации ответа"""
@@ -52,7 +49,7 @@ async def response_validation_handler(request: Request, exc: ResponseValidationE
     print(traceback.format_exc())
     
     return JSONResponse(
-        status_code=200,  # Возвращаем 200 чтобы CORS заголовки работали
+        status_code=200,
         content={
             "success": False,
             "error": "Ошибка валидации ответа сервера",
@@ -75,10 +72,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-# ========== OPTIONS HANDLER FOR CORS PREFLIGHT ==========
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
-    # Обрабатываем OPTIONS (preflight) запросы
+
     if request.method == "OPTIONS":
         response = JSONResponse(content={"message": "OK"})
     else:
@@ -93,10 +89,10 @@ async def add_cors_headers(request: Request, call_next):
     
     return response
 
-# Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(polls.router, prefix="/api/polls", tags=["Polls"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
+app.include_router(files.router, prefix="/api/files", tags=["Files"])
 
 @app.get("/")
 async def root():

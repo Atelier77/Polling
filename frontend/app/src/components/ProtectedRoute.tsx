@@ -1,11 +1,22 @@
-import React from 'react';
+// C:\К_3\FS\frontend\app\src\components\ProtectedRoute.tsx
+import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 
-const ProtectedRoute = ({ children, allowedRoles = [], redirectTo = '/login' }) => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: string[];
+  redirectTo?: string;
+}
+
+const ProtectedRoute = ({ 
+  children, 
+  allowedRoles = [], 
+  redirectTo = '/login' 
+}: ProtectedRouteProps) => {
   const location = useLocation();
   
-  const accessToken = localStorage.getItem('access_token');  //Instead of 'auth_token'
+  const accessToken = localStorage.getItem('access_token');
   const isAuthenticated = !!accessToken;
   
   const userRole = AuthService.getUserRole();

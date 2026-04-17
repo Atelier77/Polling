@@ -21,6 +21,7 @@ class User(Base):
     
     votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    uploaded_files = relationship("FileMetadata", back_populates="uploader", cascade="all, delete-orphan")
 
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime

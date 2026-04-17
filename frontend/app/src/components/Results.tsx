@@ -1,15 +1,45 @@
-import React, { useState, useEffect } from 'react';
+// C:\К_3\FS\frontend\app\src\components\Results.tsx
+import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 import './Results.css';
 
-const Results = ({ user, userRole }) => {
-  const { pollId } = useParams();
-  const [poll, setPoll] = useState(null);
-  const [results, setResults] = useState(null);
+interface Option {
+  id: number;
+  text: string;
+  votes: number;
+}
+
+interface Poll {
+  id: number;
+  title: string;
+  description: string;
+  end_date: string;
+  total_votes: number;
+  options?: Option[];
+}
+
+interface ResultsData {
+  poll: Poll;
+  options: Array<Option & { percentage?: number }>;
+}
+
+interface ResultsProps {
+  user: {
+    name?: string;
+    id?: string | number;
+    faculty?: string;
+  } | null;
+  userRole: string | null;
+}
+
+const Results = ({ user, userRole }: ResultsProps) => {
+  const { pollId } = useParams<{ pollId: string }>();
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [results, setResults] = useState<ResultsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
 
   useEffect(() => {
@@ -20,12 +50,12 @@ const Results = ({ user, userRole }) => {
   const loadResults = async () => {
     try {
       setLoading(true);
-      const resultsData = await DataService.getPollResults(pollId);
+      const resultsData = await DataService.getPollResults(Number(pollId));
       if (resultsData) {
         setResults(resultsData);
         setPoll(resultsData.poll);
       } else {
-        const pollData = await DataService.getPollById(pollId);
+        const pollData = await DataService.getPollById(Number(pollId));
         if (pollData) {
           setPoll(pollData);
           setResults({ poll: pollData, options: pollData.options || [] });
@@ -33,9 +63,10 @@ const Results = ({ user, userRole }) => {
           setError('Опрос не найден');
         }
       }
-    } catch (error) {
-      console.error('Error loading results:', error);
-      if (error.message?.includes('403') || error.message?.includes('прав')) {
+    } catch (err) {
+      console.error('Error loading results:', err);
+      const errorMessage = err instanceof Error ? err.message : '';
+      if (errorMessage.includes('403') || errorMessage.includes('прав')) {
         setError('Недостаточно прав для просмотра результатов');
       } else {
         setError('Ошибка при загрузке результатов');
@@ -47,15 +78,15 @@ const Results = ({ user, userRole }) => {
 
   const checkVoteStatus = async () => {
     try {
-      const voteCheck = await DataService.checkVote(pollId);
+      const voteCheck = await DataService.checkVote(Number(pollId));
       setHasVoted(voteCheck.has_voted);
-    } catch (error) {
-      const localVoted = DataService.hasVotedLocally(pollId);
+    } catch (err) {
+      const localVoted = DataService.hasVotedLocally(Number(pollId));
       setHasVoted(localVoted);
     }
   };
 
-  const canViewResults = () => {
+  const canViewResults = (): boolean => {
     if (AuthService.hasRole(USER_ROLES.ADMIN)) return true;
     if (AuthService.hasRole(USER_ROLES.USER)) {
       if (hasVoted) return true;
@@ -64,8 +95,8 @@ const Results = ({ user, userRole }) => {
     return false;
   };
 
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  const formatDate = (dateString: string): string => {
+    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('ru-RU', options);
   };
 
@@ -100,7 +131,7 @@ const Results = ({ user, userRole }) => {
         </div>
       </div>
     );
-    }
+  }
 
   if (!poll || !results) {
     return (
@@ -224,7 +255,16 @@ const Results = ({ user, userRole }) => {
   );
 };
 
-const Header = ({ user, userRole }) => (
+interface HeaderProps {
+  user: {
+    name?: string;
+    id?: string | number;
+    faculty?: string;
+  } | null;
+  userRole: string | null;
+}
+
+const Header = ({ user, userRole }: HeaderProps) => (
   <header className="header">
     <div className="header-content">
       <Link to="/dashboard" className="back-btn">

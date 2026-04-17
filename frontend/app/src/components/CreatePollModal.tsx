@@ -1,22 +1,41 @@
-import React, { useState } from 'react';
+// C:\К_3\FS\frontend\app\src\components\CreatePollModal.tsx
+import { useState, ChangeEvent, FormEvent } from 'react';
 import './CreatePollModal.css';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 
-const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
-  const [formData, setFormData] = useState({
+interface CreatePollModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (pollData: {
+    title: string;
+    description: string;
+    end_date: string;
+    options: Array<{ text: string }>;
+  }) => Promise<void> | void;
+}
+
+interface FormData {
+  title: string;
+  description: string;
+  end_date: string;
+  options: string[];
+}
+
+const CreatePollModal = ({ isOpen, onClose, onCreate }: CreatePollModalProps) => {
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
     end_date: '',
     options: ['', '']
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!AuthService.hasRole(USER_ROLES.ADMIN)) {
-    alert('Недостаточно прав для создания опроса');
-    return;
-  }
+      alert('Недостаточно прав для создания опроса');
+      return;
+    }
     
     // Валидация
     if (!formData.title.trim() || !formData.description.trim() || !formData.end_date) {
@@ -43,7 +62,7 @@ const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
     }));
   };
 
-  const removeOption = (index) => {
+  const removeOption = (index: number) => {
     if (formData.options.length > 2) {
       setFormData(prev => ({
         ...prev,
@@ -52,7 +71,7 @@ const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
     }
   };
 
-  const updateOption = (index, value) => {
+  const updateOption = (index: number, value: string) => {
     setFormData(prev => ({
       ...prev,
       options: prev.options.map((opt, i) => i === index ? value : opt)
@@ -66,38 +85,41 @@ const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
       <div className="modal-content">
         <div className="modal-header">
           <h2>Создать новый опрос</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <button type="button" className="close-btn" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Название опроса *</label>
+            <label htmlFor="poll-title">Название опроса *</label>
             <input
+              id="poll-title"
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Введите название опроса"
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Описание *</label>
+            <label htmlFor="poll-description">Описание *</label>
             <textarea
+              id="poll-description"
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Опишите опрос"
-              rows="3"
+              rows={3}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Дата окончания *</label>
+            <label htmlFor="poll-end-date">Дата окончания *</label>
             <input
+              id="poll-end-date"
               type="datetime-local"
               value={formData.end_date}
-              onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
               required
             />
           </div>
@@ -109,7 +131,7 @@ const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
                 <input
                   type="text"
                   value={option}
-                  onChange={(e) => updateOption(index, e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => updateOption(index, e.target.value)}
                   placeholder={`Вариант ${index + 1}`}
                   required
                 />

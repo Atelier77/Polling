@@ -88,61 +88,101 @@
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_, or_, desc, asc
+from datetime import datetime
+from typing import List, Optional
 
+from src.database.connection import get_db
 from src.models.poll import Poll, Option
+from src.models.vote import Vote
+from src.schemas.poll import (
+    PollCreate, 
+    PollResponse, 
+    PollListParams, 
+    PaginatedResponse,
+    PollResultsResponse,
+    PollUpdate
+)
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
 
 router = APIRouter()
 
-# ========== GET ALL POLLS ==========
 @router.get("/")
 async def get_polls(
     db: DatabaseDep,
-    skip: int = Query(0, ge=0, description="Сколько записей пропустить"),
-    limit: int = Query(100, ge=1, le=100, description="Лимит записей")
+    current_user: CurrentUser,
+    params: PollListParams = Depends(),
 ):
     """
-    Получить список всех активных опросов
+    Получить список опросов с фильтрацией, поиском, сортировкой и пагинацией
     """
     try:
-        # Получаем опросы
-        result = await db.execute(
-            select(Poll).order_by(Poll.created_at.desc())
+        query = select(Poll).options(
         )
+        
+        if params.status == "active":
+            query = query.where(Poll.end_date > datetime.utcnow())
+        elif params.status == "expired":
+            query = query.where(Poll.end_date <= datetime.utcnow())
+        
+        if params.search:
+            search_term = f"%{params.search}%"
+            query = query.where(
+                or_(
+                    Poll.title.ilike(search_term),
+                    Poll.description.ilike(search_term)
+                )
+            )
+        
+        sort_column = {
+            "created_at": Poll.created_at,
+            "total_votes": Poll.total_votes,
+            "end_date": Poll.end_date,
+            "title": Poll.title,
+        }.get(params.sort_by, Poll.created_at)
+        
+        if params.sort_order == "asc":
+            query = query.order_by(asc(sort_column))
+        else:
+            query = query.order_by(desc(sort_column))
+        
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+        
+        offset = (params.page - 1) * params.limit
+        query = query.offset(offset).limit(params.limit)
+        
+        result = await db.execute(query)
         polls = result.scalars().all()
         
-        # Вручную создаем ответ для каждого опроса
-        response_polls = []
-        for poll in polls[skip:skip + limit]:
-            # Получаем варианты для этого опроса
+        poll_responses = []
+        for poll in polls:
             options_result = await db.execute(
                 select(Option).where(Option.poll_id == poll.id)
             )
             options = options_result.scalars().all()
             
-            # Создаем словарь вручную
-            poll_dict = {
-                "id": poll.id,
-                "title": poll.title,
-                "description": poll.description,
-                "end_date": poll.end_date.isoformat() if poll.end_date else None,
-                "total_votes": poll.total_votes,
-                "created_at": poll.created_at.isoformat() if poll.created_at else None,
-                "options": [
-                    {
-                        "id": opt.id,
-                        "text": opt.text,
-                        "votes": opt.votes
-                    }
+            poll_responses.append(PollResponse(
+                id=poll.id,
+                title=poll.title,
+                description=poll.description,
+                end_date=poll.end_date,
+                total_votes=poll.total_votes,
+                created_at=poll.created_at,
+                options=[
+                    {"id": opt.id, "text": opt.text, "votes": opt.votes}
                     for opt in options
                 ]
-            }
-            response_polls.append(poll_dict)
+            ))
         
-        return response_polls
+        return PaginatedResponse(
+            items=poll_responses,
+            total=total,
+            page=params.page,
+            limit=params.limit,
+            pages=(total + params.limit - 1) // params.limit
+        )
         
     except Exception as e:
         print(f"Error getting polls: {str(e)}")
@@ -152,12 +192,13 @@ async def get_polls(
         )
 
 # ========== CREATE POLL ==========
-@router.post("/")
+@router.post("/", response_model=PollResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_poll(
-    poll_data: Dict[str, Any],
+    poll_data: PollCreate,
     db: DatabaseDep,
     admin_id: CurrentAdmin
 ):
+
     """
     Создать новый опрос (только для администраторов)
     """
@@ -180,7 +221,21 @@ async def create_new_poll(
                 "error": "Должен быть хотя бы один вариант ответа"
             }
         
-        # 1. Создаем опрос
+        if poll_data.end_date <= datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Дата окончания должна быть в будущем"
+            )
+        
+        exists = await db.execute(
+        select(Poll).where(Poll.title == poll_data.title)
+    )
+        if exists.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Опрос с таким названием уже существует"
+            )
+        
         poll = Poll(
             title=poll_data["title"],
             description=poll_data.get("description", ""),
@@ -191,7 +246,6 @@ async def create_new_poll(
         db.add(poll)
         await db.flush()
         
-        # 2. Создаем варианты ответов
         created_options = []
         for option_text in options:
             option = Option(
@@ -203,37 +257,47 @@ async def create_new_poll(
             created_options.append(option)
         
         await db.commit()
+        await db.refresh(poll)
         
-        print(f"✅ Poll created successfully with ID: {poll.id}")
+        options_result = await db.execute(
+            select(Option).where(Option.poll_id == poll.id)
+        )
+        options = options_result.scalars().all()
         
-        # 3. Возвращаем ответ
-        return {
-            "success": True,
-            "message": "Опрос успешно создан",
-            "poll_id": poll.id,
-            "title": poll.title,
-            "options_count": len(options)
-        }
+        return PollResponse(
+            id=poll.id,
+            title=poll.title,
+            description=poll.description,
+            end_date=poll.end_date,
+            total_votes=poll.total_votes,
+            created_at=poll.created_at,
+            options=[
+                {"id": opt.id, "text": opt.text, "votes": opt.votes}
+                for opt in options
+            ]
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
         await db.rollback()
-        print(f"❌ Error creating poll: {str(e)}")
-        return {
-            "success": False,
-            "error": f"Ошибка при создании опроса: {str(e)}"
-        }
+        print(f"Error creating poll: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при создании опроса: {str(e)}"
+        )
+    
 
-# ========== GET POLL BY ID ==========
-@router.get("/{poll_id}")
+@router.get("/{poll_id}", response_model=PollResponse)
 async def get_poll(
     poll_id: int,
-    db: DatabaseDep
+    db: DatabaseDep,
+    current_user: CurrentUser
 ):
     """
     Получить опрос по ID
     """
     try:
-        # Получаем опрос
         result = await db.execute(
             select(Poll).where(Poll.id == poll_id)
         )
@@ -245,29 +309,23 @@ async def get_poll(
                 detail="Опрос не найден"
             )
         
-        # Получаем варианты
         options_result = await db.execute(
             select(Option).where(Option.poll_id == poll_id)
         )
         options = options_result.scalars().all()
         
-        # Создаем ответ вручную
-        return {
-            "id": poll.id,
-            "title": poll.title,
-            "description": poll.description,
-            "end_date": poll.end_date.isoformat() if poll.end_date else None,
-            "total_votes": poll.total_votes,
-            "created_at": poll.created_at.isoformat() if poll.created_at else None,
-            "options": [
-                {
-                    "id": opt.id,
-                    "text": opt.text,
-                    "votes": opt.votes
-                }
+        return PollResponse(
+            id=poll.id,
+            title=poll.title,
+            description=poll.description,
+            end_date=poll.end_date,
+            total_votes=poll.total_votes,
+            created_at=poll.created_at,
+            options=[
+                {"id": opt.id, "text": opt.text, "votes": opt.votes}
                 for opt in options
             ]
-        }
+        )
         
     except HTTPException:
         raise
@@ -278,11 +336,11 @@ async def get_poll(
             detail=f"Ошибка при получении опроса: {str(e)}"
         )
 
-# ========== GET POLL RESULTS ==========
-@router.get("/{poll_id}/results")
+@router.get("/{poll_id}/results", response_model=PollResultsResponse)
 async def get_poll_results(
     poll_id: int,
-    db: DatabaseDep
+    db: DatabaseDep,
+    current_user: CurrentUser
 ):
     """
     Получить результаты опроса с процентами
@@ -300,14 +358,12 @@ async def get_poll_results(
                 detail="Опрос не найден"
             )
         
-        # 2. Получаем варианты с голосами
         options_result = await db.execute(
             select(Option).where(Option.poll_id == poll_id).order_by(Option.votes.desc())
         )
         options = options_result.scalars().all()
         
-        # 3. Рассчитываем проценты
-        total_votes = poll.total_votes or 1  # чтобы избежать деления на ноль
+        total_votes = poll.total_votes or 1
         options_with_percents = []
         
         for option in options:
@@ -320,17 +376,16 @@ async def get_poll_results(
                 "percentage": round(percentage, 2)
             })
         
-        # 4. Создаем полный ответ
-        return {
-            "poll_id": poll.id,
-            "title": poll.title,
-            "description": poll.description,
-            "total_votes": poll.total_votes,
-            "end_date": poll.end_date.isoformat() if poll.end_date else None,
-            "created_at": poll.created_at.isoformat() if poll.created_at else None,
-            "options": options_with_percents,
-            "has_ended": poll.end_date < datetime.now() if poll.end_date else False
-        }
+        return PollResultsResponse(
+            poll_id=poll.id,
+            title=poll.title,
+            description=poll.description,
+            total_votes=poll.total_votes,
+            end_date=poll.end_date,
+            created_at=poll.created_at,
+            options=options_with_percents,
+            has_ended=poll.end_date < datetime.utcnow() if poll.end_date else False
+        )
         
     except HTTPException:
         raise
@@ -340,8 +395,30 @@ async def get_poll_results(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении результатов: {str(e)}"
         )
+    
 
-# ========== GET ACTIVE POLLS ==========
+@router.put("/{poll_id}", response_model=PollResponse)
+async def update_poll(
+    poll_id: int,
+    poll_data: PollUpdate,
+    db: DatabaseDep,
+    admin_id: CurrentAdmin
+):
+    """Обновление опроса (только админ)"""
+    poll = await db.get(Poll, poll_id)
+    if not poll:
+        raise HTTPException(status_code=404, detail="Опрос не найден")
+    
+    update_data = poll_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(poll, key, value)
+    
+    await db.commit()
+    await db.refresh(poll)
+    return PollResponse.model_validate(poll)
+
+
+
 @router.get("/active")
 async def get_active_polls(
     db: DatabaseDep
@@ -393,3 +470,24 @@ async def get_active_polls(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении активных опросов: {str(e)}"
         )
+    
+@router.delete("/{poll_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_poll(
+    poll_id: int,
+    db: DatabaseDep,
+    admin_id: CurrentAdmin
+):
+    """Удаление опроса (только админ)"""
+    poll = await db.get(Poll, poll_id)
+    if not poll:
+        raise HTTPException(status_code=404, detail="Опрос не найден")
+    
+    votes_count = await db.execute(
+        select(func.count()).select_from(Vote).where(Vote.poll_id == poll_id)
+    )
+    if votes_count.scalar() > 0:
+        raise HTTPException(status_code=409, detail="Нельзя удалить опрос с голосами")
+    
+    await db.delete(poll)
+    await db.commit()
+    return None
