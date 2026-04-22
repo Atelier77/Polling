@@ -13,6 +13,7 @@ from src.models.user import User, UserRole
 from src.models.poll import Poll, Option
 from src.models.vote import Vote
 from src.models.token import RefreshToken
+from src.models.file  import FileMetadata
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -91,10 +91,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc
 from datetime import datetime
 from typing import List, Optional
+from src.services.file_service import FileService
 
 from src.database.connection import get_db
 from src.models.poll import Poll, Option
 from src.models.vote import Vote
+from src.models.file import FileMetadata
 from src.schemas.poll import (
     PollCreate, 
     PollResponse, 
@@ -163,6 +165,13 @@ async def get_polls(
             )
             options = options_result.scalars().all()
             
+            banner_url = None
+            if poll.banner_file_id:
+                file_meta = await db.get(FileMetadata, poll.banner_file_id)
+                if file_meta:
+                    file_service = FileService()
+                    banner_url = file_service.get_download_url(file_meta.file_key)
+
             poll_responses.append(PollResponse(
                 id=poll.id,
                 title=poll.title,
@@ -170,8 +179,10 @@ async def get_polls(
                 end_date=poll.end_date,
                 total_votes=poll.total_votes,
                 created_at=poll.created_at,
+                banner_file_id=poll.banner_file_id,
+                banner_url=banner_url, 
                 options=[
-                    {"id": opt.id, "text": opt.text, "votes": opt.votes}
+                    {"id": opt.id, "text": str(opt.text), "votes": opt.votes}
                     for opt in options
                 ]
             ))
@@ -198,71 +209,50 @@ async def create_new_poll(
     db: DatabaseDep,
     admin_id: CurrentAdmin
 ):
-
-    """
-    Создать новый опрос (только для администраторов)
-    """
-    print(f"=== CREATE POLL REQUEST ===")
-    print(f"Admin ID: {admin_id}")
-    print(f"Poll data: {poll_data}")
-    
     try:
-        # Валидация входных данных
-        if not poll_data.get("title") or not isinstance(poll_data["title"], str):
-            return {
-                "success": False,
-                "error": "Заголовок обязателен и должен быть строкой"
-            }
+        # 🔹 Валидация
+        if not poll_data.title or not isinstance(poll_data.title, str):
+            raise HTTPException(400, "Заголовок обязателен")
         
-        options = poll_data.get("options", [])
-        if not options or not isinstance(options, list) or len(options) < 1:
-            return {
-                "success": False,
-                "error": "Должен быть хотя бы один вариант ответа"
-            }
+        options = poll_data.options
+        if not options or len(options) < 2:  # ← Минимум 2 варианта
+            raise HTTPException(400, "Должно быть минимум 2 варианта ответа")
         
         if poll_data.end_date <= datetime.utcnow():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Дата окончания должна быть в будущем"
-            )
+            raise HTTPException(400, "Дата окончания должна быть в будущем")
         
-        exists = await db.execute(
-        select(Poll).where(Poll.title == poll_data.title)
-    )
+        # 🔹 Проверка уникальности названия
+        exists = await db.execute(select(Poll).where(Poll.title == poll_data.title))
         if exists.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Опрос с таким названием уже существует"
-            )
+            raise HTTPException(409, "Опрос с таким названием уже существует")
         
+        # 🔹 Создаём опрос
         poll = Poll(
-            title=poll_data["title"],
-            description=poll_data.get("description", ""),
-            end_date=poll_data.get("end_date") or datetime.now() + timedelta(days=7),
+            title=poll_data.title,
+            description=poll_data.description,
+            end_date=poll_data.end_date,  # ← end_date уже валидирован Pydantic
             total_votes=0
         )
-        
         db.add(poll)
         await db.flush()
         
-        created_options = []
-        for option_text in options:
+        # 🔹 Создаём варианты ответов — ✅ ИСПРАВЛЕНИЕ ЗДЕСЬ:
+        for option_data in poll_data.options:  # ← option_data это OptionCreate
             option = Option(
                 poll_id=poll.id,
-                text=str(option_text),
+                text=str(option_data.text),  # ✅ Берём .text свойство!
                 votes=0
             )
             db.add(option)
-            created_options.append(option)
         
         await db.commit()
         await db.refresh(poll)
         
+        # 🔹 Загружаем options для ответа
         options_result = await db.execute(
             select(Option).where(Option.poll_id == poll.id)
         )
-        options = options_result.scalars().all()
+        options_list = options_result.scalars().all()
         
         return PollResponse(
             id=poll.id,
@@ -273,7 +263,7 @@ async def create_new_poll(
             created_at=poll.created_at,
             options=[
                 {"id": opt.id, "text": opt.text, "votes": opt.votes}
-                for opt in options
+                for opt in options_list
             ]
         )
         
@@ -282,11 +272,9 @@ async def create_new_poll(
     except Exception as e:
         await db.rollback()
         print(f"Error creating poll: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при создании опроса: {str(e)}"
-        )
+        raise HTTPException(500, f"Ошибка при создании опроса: {str(e)}")
     
+
 
 @router.get("/{poll_id}", response_model=PollResponse)
 async def get_poll(
@@ -313,6 +301,13 @@ async def get_poll(
             select(Option).where(Option.poll_id == poll_id)
         )
         options = options_result.scalars().all()
+
+        banner_url = None
+        if poll.banner_file_id:
+            file_meta = await db.get(FileMetadata, poll.banner_file_id)
+            if file_meta:
+                file_service = FileService()
+                banner_url = file_service.get_download_url(file_meta.file_key)
         
         return PollResponse(
             id=poll.id,
@@ -321,6 +316,8 @@ async def get_poll(
             end_date=poll.end_date,
             total_votes=poll.total_votes,
             created_at=poll.created_at,
+            banner_file_id=poll.banner_file_id,
+            banner_url=banner_url,
             options=[
                 {"id": opt.id, "text": opt.text, "votes": opt.votes}
                 for opt in options
@@ -335,6 +332,7 @@ async def get_poll(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении опроса: {str(e)}"
         )
+    
 
 @router.get("/{poll_id}/results", response_model=PollResultsResponse)
 async def get_poll_results(
@@ -491,3 +489,47 @@ async def delete_poll(
     await db.delete(poll)
     await db.commit()
     return None
+
+@router.put("/{poll_id}/banner")
+async def update_poll_banner(
+    poll_id: int,
+    banner_data: dict,
+    db: DatabaseDep,
+    current_admin: CurrentAdmin
+):
+    """Привязать баннер к опросу"""
+    try:
+        banner_file_id = banner_data.get("banner_file_id")
+        
+        if not banner_file_id:
+            raise HTTPException(400, detail="banner_file_id обязателен")
+        
+        # 🔹 Проверяем файл
+        from src.models.file import FileMetadata
+        file_meta = await db.get(FileMetadata, banner_file_id)
+        if not file_meta:
+            raise HTTPException(404, detail=f"Файл {banner_file_id} не найден")
+        
+        # 🔹 Проверяем опрос
+        poll = await db.get(Poll, poll_id)
+        if not poll:
+            raise HTTPException(404, detail=f"Опрос {poll_id} не найден")
+        
+        # 🔹 Обновляем связь
+        print(f"🔗 Привязываем файл {banner_file_id} к опросу {poll_id}")
+        poll.banner_file_id = banner_file_id
+        await db.commit()
+        
+        return {
+            "success": True, 
+            "message": "Баннер привязан", 
+            "poll_id": poll_id,
+            "banner_file_id": banner_file_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        print(f"❌ Ошибка привязки баннера: {e}")
+        raise HTTPException(500, detail=f"Ошибка: {str(e)}")

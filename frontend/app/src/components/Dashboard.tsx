@@ -1,14 +1,15 @@
 // C:\К_3\FS\frontend\app\src\components\Dashboard.tsx
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 import CreatePollModal from './CreatePollModal';
+import { PollBannerUpload } from './PollBannerUpload';  // 🔹 Новый импорт
 import { PollFilters, FilterState } from './PollFilters';
 import { Pagination } from './Pagination';
 import './Dashboard.css';
 
-// 🔹 Типы для опроса
 export interface Poll {
   id: number;
   title: string;
@@ -16,6 +17,8 @@ export interface Poll {
   end_date: string;
   total_votes: number;
   created_at: string;
+  banner_file_id?: number | null;  // 🔹 Добавлено
+  banner_url?: string | null;       // 🔹 Добавлено
   options?: Array<{
     id: number;
     text: string;
@@ -23,7 +26,6 @@ export interface Poll {
   }>;
 }
 
-// 🔹 Типы для пагинации
 interface PaginationData {
   total: number;
   pages: number;
@@ -55,7 +57,15 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
   const [pagination, setPagination] = useState<PaginationData>({ total: 0, pages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 🔹 Состояние для модалки создания опроса
   const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // 🔹 Состояние для модалки загрузки баннера
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [currentPollId, setCurrentPollId] = useState<number | null>(null);
+  const [currentPollTitle, setCurrentPollTitle] = useState<string>('');
+  const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(null);
 
   const isAdmin = userRole === USER_ROLES.ADMIN;
 
@@ -68,7 +78,6 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
       setLoading(true);
       setError(null);
 
-      // 🔹 Формируем query параметры
       const params = new URLSearchParams();
       
       if (filters.search) params.append('search', filters.search);
@@ -78,10 +87,8 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
       params.append('page', filters.page.toString());
       params.append('limit', filters.limit.toString());
 
-      // 🔹 Загружаем опросы с сервера
       const data = await DataService.getPolls(params.toString());
       
-      // 🔹 Обрабатываем ответ (может быть массив или объект с пагинацией)
       if (Array.isArray(data)) {
         setPolls(data);
         setPagination({ total: data.length, pages: Math.ceil(data.length / filters.limit) });
@@ -141,6 +148,7 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
     }
   };
 
+  // 🔹 Обработчик создания опроса
   const handleCreatePoll = async (pollData: {
     title: string;
     description: string;
@@ -155,34 +163,58 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
         return;
       }
 
-      const requestData = {
-        title: pollData.title,
-        description: pollData.description,
-        end_date: pollData.end_date,
-        options: pollData.options
-      };
-
       const response = await fetch('http://localhost:8000/api/polls/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(pollData)
       });
 
       if (response.ok) {
+        const createdPoll = await response.json();
         await loadPolls();
-        setShowCreateModal(false);
-        alert('Опрос успешно создан!');
+        return {
+          id: createdPoll.id,
+          title: createdPoll.title
+        };  // ← Возвращаем { id: 123, title: "...", ... }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData.detail || 'Ошибка при создании опроса');
+        const errorMessage = typeof errorData.detail === 'string' 
+          ? errorData.detail 
+          : 'Ошибка при создании опроса';
+        alert(errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (err) {
       console.error('Error creating poll:', err);
-      alert('Ошибка сети. Проверьте, что сервер запущен.');
+      alert(err instanceof Error ? err.message : 'Ошибка сети');
+      throw err;
     }
+  };
+
+  // 🔹 Колбэк: опрос создан, открываем модалку загрузки баннера
+  const handlePollCreated = (pollId: number, pollTitle: string) => {
+    setCurrentPollId(pollId);
+    setCurrentPollTitle(pollTitle);
+    
+    // 🔹 Находим опрос в списке, чтобы получить текущий баннер (если есть)
+    const poll = polls.find(p => p.id === pollId);
+    setCurrentBannerUrl(poll?.banner_url || null);
+    
+    setShowBannerModal(true);
+  };
+
+  // 🔹 Колбэк: баннер успешно загружен/обновлён
+  const handleBannerUploaded = () => {
+    setShowBannerModal(false);
+    setCurrentPollId(null);
+    setCurrentPollTitle('');
+    setCurrentBannerUrl(null);
+    
+    // 🔹 Обновляем список опросов, чтобы отобразить новый баннер
+    loadPolls();
   };
 
   const handleFiltersChange = (newFilters: FilterState) => {
@@ -269,6 +301,18 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
                     onClick={() => handlePollClick(poll.id)}
                     style={{ cursor: 'pointer' }}
                   >
+                    {/* 🔹 Отображение баннера опроса */}
+                    {poll.banner_url && (
+                      <div className="poll-banner">
+                        <img 
+                          src={poll.banner_url} 
+                          alt={poll.title}
+                          className="banner-image"
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                      </div>
+                    )}
+                    
                     <div className="poll-header">
                       <h3 className="poll-title">{poll.title}</h3>
                       <div className={`poll-status ${isExpired ? 'expired' : 'active'}`}>
@@ -326,12 +370,31 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreatePoll}
+        onPollCreated={handlePollCreated}  // 🔹 Новый колбэк
       />
+
+      {/* 🔹 Модальное окно загрузки баннера */}
+      {showBannerModal && currentPollId && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowBannerModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <PollBannerUpload
+              pollId={currentPollId}
+              pollTitle={currentPollTitle}
+              currentBannerUrl={currentBannerUrl}
+              onBannerUploaded={handleBannerUploaded}
+              onBack={() => setShowBannerModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
+// =============================================================================
 // 🔹 Компонент шапки
+// =============================================================================
+
 interface HeaderProps {
   user: {
     id?: number | string,

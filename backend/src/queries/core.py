@@ -135,6 +135,7 @@ async def get_database_status(async_engine):
     from src.models.poll import Poll, Option
     from src.models.vote import Vote
     from src.models.token import RefreshToken
+    from src.models.file import FileMetadata
     
     async with async_engine.connect() as conn:
         connection_ok = await check_database_connection(async_engine)
@@ -147,7 +148,8 @@ async def get_database_status(async_engine):
             (Poll, "polls"), 
             (Option, "options"), 
             (Vote, "votes"),
-            (RefreshToken, "refresh_tokens") 
+            (RefreshToken, "refresh_tokens"),
+            (FileMetadata, "files")
         ]:
             try:
                 result = await conn.execute(select(model))

@@ -1,307 +1,254 @@
+/* frontend/src/components/FileUpload.css */
+
 .file-upload {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: #f9fafb;
-  border: 2px dashed #d1d5db;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
   border-radius: 12px;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background-color 0.2s;
+  max-width: 100%;
 }
 
 .file-upload:hover {
   border-color: #667eea;
-  background: #f0f4ff;
+  background: #f1f5f9;
 }
 
-.file-upload.drag-over {
-  border-color: #667eea;
-  background: #e0e7ff;
-  border-style: solid;
+.file-upload.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  display: none;
 }
 
-.file-upload-label {
+.file-upload-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 8px;
+  font-weight: 600;
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
   width: fit-content;
 }
 
-.file-upload-label:hover {
+.file-upload-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-.file-upload-label:active {
-  transform: translateY(0);
-}
-
-.file-upload-label:disabled {
-  background: #d1d5db;
+.file-upload-button:disabled {
+  background: #cbd5e1;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.file-upload-label i {
-  font-size: 16px;
+.uploading-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .upload-progress {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 4px 0;
 }
 
 .progress-bar {
   flex: 1;
   height: 8px;
-  background: #e5e7eb;
+  background: #e2e8f0;
   border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #059669);
-  border-radius: 4px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
   transition: width 0.3s ease;
+  border-radius: 4px;
 }
 
-.upload-progress span {
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
   min-width: 40px;
   text-align: right;
+}
+
+.file-preview {
+  position: relative;
+  display: inline-block;
+  max-width: 200px;
+  margin-top: 8px;
+}
+
+.preview-image {
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+}
+
+.remove-file-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: white;
+  border: 2px solid white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, background 0.2s;
+  line-height: 1;
+  padding: 0;
+}
+
+.remove-file-btn:hover:not(:disabled) {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.remove-file-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .upload-error {
   padding: 10px 14px;
   background: #fef2f2;
   border: 1px solid #fecaca;
-  border-radius: 8px;
+  border-left: 4px solid #ef4444;
+  border-radius: 6px;
   color: #dc2626;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.upload-error::before {
-  content: "⚠️";
-  font-size: 16px;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .upload-hint {
   font-size: 12px;
-  color: #6b7280;
-  text-align: center;
-  padding: 4px 0;
+  color: #64748b;
+  padding-top: 4px;
 }
 
-.file-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.file-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-}
-
-.file-item-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: #6b7280;
-}
-
-.file-item-icon.image {
-  background: #dbeafe;
-  color: #3b82f6;
-}
-
-.file-item-icon.pdf {
-  background: #fee2e2;
-  color: #ef4444;
-}
-
-.file-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.file-item-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1f2937;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-item-meta {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.file-item-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.file-item-btn {
+.url-expiry-hint {
+  font-size: 11px;
+  color: #f59e0b;
+  background: #fffbeb;
   padding: 6px 10px;
-  background: transparent;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  border-radius: 4px;
+  border: 1px solid #fcd34d;
 }
 
-.file-item-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.file-item-btn.delete {
-  border-color: #fecaca;
-  color: #dc2626;
-}
-
-.file-item-btn.delete:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-}
-
-.file-preview {
-  margin-top: 12px;
-  border-radius: 8px;
-  overflow: hidden;
-  max-width: 200px;
-  max-height: 200px;
-}
-
-.file-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
+/* Адаптивность */
 @media (max-width: 640px) {
   .file-upload {
     padding: 12px;
   }
   
-  .file-item {
-    flex-wrap: wrap;
+  .file-upload-button {
+    width: 100%;
+    padding: 10px 16px;
   }
   
-  .file-item-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
+  .file-preview {
+    max-width: 100%;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .file-upload {
-    background: #1f2937;
-    border-color: #4b5563;
-  }
-  
-  .file-upload:hover {
-    border-color: #818cf8;
-    background: #1e1b4b;
-  }
-  
-  .upload-progress span {
-    color: #e5e7eb;
-  }
-  
-  .progress-bar {
-    background: #374151;
-  }
-  
-  .upload-error {
-    background: #451a1a;
-    border-color: #7f1d1d;
-    color: #fca5a5;
-  }
-  
-  .upload-hint {
-    color: #9ca3af;
-  }
-  
-  .file-item {
-    background: #374151;
-    border-color: #4b5563;
-  }
-  
-  .file-item-name {
-    color: #f9fafb;
-  }
-  
-  .file-item-meta {
-    color: #9ca3af;
-  }
-  
-  .file-item-btn {
-    border-color: #4b5563;
-    color: #e5e7eb;
-    background: transparent;
-  }
-  
-  .file-item-btn:hover {
-    background: #4b5563;
-  }
-  
-  .file-item-btn.delete {
-    border-color: #7f1d1d;
-    color: #fca5a5;
-  }
-  
-  .file-item-btn.delete:hover {
-    background: #451a1a;
-  }
+/* Доступность */
+.file-upload-button:focus-visible,
+.remove-file-btn:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+.file-upload-button:focus:not(:focus-visible),
+.remove-file-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* frontend/src/components/FileUpload.css */
+
+/* Состояние загрузки конфигурации */
+.file-upload-button:disabled.loading {
+  background: #94a3b8;
+  cursor: wait;
+}
+
+.loading-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+}
+
+/* Предупреждение о временной ссылке */
+.url-expiry-hint {
+  font-size: 11px;
+  color: #f59e0b;
+  background: #fffbeb;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #fcd34d;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.url-expiry-hint::before {
+  content: "⏱️";
+}
+
+/* Анимация спиннера */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
 }

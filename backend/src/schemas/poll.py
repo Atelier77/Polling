@@ -178,6 +178,8 @@ class PollResponse(BaseModel):
     total_votes: int = 0
     created_at: datetime
     options: Optional[List[OptionResponse]] = None
+    banner_file_id: Optional[int] = None
+    banner_url: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 

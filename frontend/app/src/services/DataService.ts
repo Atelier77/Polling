@@ -1,5 +1,6 @@
 import { AuthService } from './AuthService';
-import {FileInfo} from '../components/FileUpload';
+import {FileInfo} from '../types/file';
+import {FileStorageConfig, DEFAULT_FILE_CONFIG} from '../types/fileConfig';
 
 const API_BASE_URL = 'http://localhost:8000'; 
 
@@ -434,44 +435,116 @@ export const DataService = {
     window.location.href = '/login';
   },
 
+
+/**
+ * Загрузка файла в объектное хранилище
+ * @param formData FormData с файлом и метаданными
+ * @param onProgress Callback для отслеживания прогресса
+ */
 async uploadFile(
   formData: FormData,
   onProgress?: (event: ProgressEvent) => void
 ): Promise<{ success: boolean; file?: FileInfo; error?: string }> {
   try {
-    const token = this.getAuthToken();
+    const token = localStorage.getItem('access_token');
     
-    const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
-      method: 'POST',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-      body: formData,
-    });
-
-    if (onProgress) {
+    // Используем XMLHttpRequest для отслеживания прогресса загрузки
+    const xhr = new XMLHttpRequest();
+    
+    return new Promise((resolve) => {
+      // 🔹 Отслеживание прогресса
+      xhr.upload.addEventListener('progress', (event: ProgressEvent) => {
+        if (onProgress && event.lengthComputable) {
+          onProgress(event);
+        }
+      });
       
-    }
-
-    if (response.ok) {
-      return { success: true, file: await response.json() };
-    }
-    
-    const error = await response.json().catch(() => ({}));
-    return { success: false, error: error.detail || 'Ошибка загрузки' };
+      // 🔹 Обработка успешного ответа
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve({ success: true, file: response as FileInfo });
+          } catch (parseError) {
+            console.error('Failed to parse upload response:', parseError);
+            resolve({ success: true });
+          }
+        } else {
+          // 🔹 Обработка ошибки от сервера
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            const errorMessage = errorData.detail || errorData.message || 'Ошибка загрузки';
+            resolve({ success: false, error: errorMessage });
+          } catch {
+            resolve({ 
+              success: false, 
+              error: `Ошибка ${xhr.status}: ${xhr.statusText}` 
+            });
+          }
+        }
+      });
+      
+      // 🔹 Обработка сетевых ошибок
+      xhr.addEventListener('error', () => {
+        resolve({ success: false, error: 'Ошибка сети. Проверьте подключение к серверу.' });
+      });
+      
+      // 🔹 Обработка таймаута
+      xhr.addEventListener('timeout', () => {
+        resolve({ success: false, error: 'Таймаут загрузки. Файл слишком большой или медленное соединение.' });
+      });
+      
+      // 🔹 Настройка запроса
+      xhr.open('POST', `${API_BASE_URL}/api/files/upload`);
+      xhr.timeout = 300000; // 5 минут таймаут для больших файлов
+      
+      // 🔹 Добавляем токен авторизации
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      // 🔹 Content-Type устанавливается автоматически для FormData
+      
+      // 🔹 Отправка
+      xhr.send(formData);
+    });
     
   } catch (error: any) {
-    return { success: false, error: error.message || 'Ошибка сети' };
+    console.error('Upload exception:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Непредвиденная ошибка при загрузке' 
+    };
   }
 },
 
-async getFileDownloadUrl(fileId: number): Promise<string | null> {
+/**
+ * Получение pre-signed URL для скачивания файла
+ * @param fileId ID файла в базе данных
+ */
+async getFileDownloadUrl(fileId: number): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
     const response = await this.request(`/api/files/${fileId}/download`);
-    
-    return response.url || null;
-  } catch {
-    return null;
+    return { success: true, url: response.url };
+  } catch (error: any) {
+    return { 
+      success: false, 
+      error: error.message || 'Ошибка получения ссылки' 
+    };
   }
 },
+
+async linkFileToPoll(fileId: number, pollId: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    await this.request(`/api/polls/${pollId}/banner`, {
+      method: 'PUT',
+      body: JSON.stringify({ banner_file_id: fileId })
+    });
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+},
+
 
 async deleteFile(fileId: number): Promise<{ success: boolean; error?: string }> {
   try {
@@ -480,5 +553,35 @@ async deleteFile(fileId: number): Promise<{ success: boolean; error?: string }> 
   } catch (error: any) {
     return { success: false, error: error.message };
   }
+},
+
+async getFileStorageConfig(): Promise<FileStorageConfig | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/files/config`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // 🔹 Не добавляем Authorization — эндпоинт публичный
+    });
+    
+    if (response.ok) {
+      const config = await response.json();
+      return config as FileStorageConfig;
+    }
+    
+    // Если эндпоинт не найден или ошибка — возвращаем дефолт
+    console.warn('Failed to fetch file config, using defaults');
+    return null;
+    
+  } catch (error) {
+    console.error('Error fetching file storage config:', error);
+    return null;
+  }
+},
+
+async getFileStorageConfigWithFallback(): Promise<FileStorageConfig> {
+  const config = await this.getFileStorageConfig();
+  return config ?? DEFAULT_FILE_CONFIG;
 }
 };

@@ -78,8 +78,8 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "poll-system-files"
     S3_REGION: str = "us-east-1"  # Требуется boto3, даже для MinIO
     
-    # LOCAL_STORAGE_PATH: str = "backend/uploads"
-    # USE_LOCAL_STORAGE: bool = False
+    LOCAL_STORAGE_PATH: str = "backend/uploads"
+    USE_LOCAL_STORAGE: bool = False
     
     S3_URL_EXPIRY_SECONDS: int = 3600
     S3_PUBLIC_BUCKET: bool = False

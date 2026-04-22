@@ -12,8 +12,10 @@ class Poll(Base):
     end_date = Column(DateTime(timezone=True), nullable=False)
     total_votes = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    banner_file_id = Column(Integer, ForeignKey('files.id'), nullable=True)
+    banner = relationship("FileMetadata", foreign_keys=[banner_file_id], lazy="select")
     
-    # Relationships
     options = relationship("Option", back_populates="poll", cascade="all, delete-orphan")
 
 class Option(Base):
