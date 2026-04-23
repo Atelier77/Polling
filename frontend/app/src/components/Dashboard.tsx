@@ -41,6 +41,7 @@ interface DashboardProps {
   } | null;
   userRole: string | null;
   onLogout: () => void;
+  adminView?: boolean;
 }
 
 const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {

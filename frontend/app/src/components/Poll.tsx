@@ -25,6 +25,7 @@ interface PollProps {
     id?: string | number;
     faculty?: string;
   } | null;
+  userRole: string | null;
 }
 
 const Poll = ({ user }: PollProps) => {
