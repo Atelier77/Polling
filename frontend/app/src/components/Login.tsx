@@ -1,4 +1,3 @@
-// C:\К_3\FS\frontend\app\src\components\Login.tsx
 import { useState, ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import './Login.css';
 

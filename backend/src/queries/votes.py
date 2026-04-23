@@ -1,4 +1,3 @@
-# backend/src/queries/votes.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 

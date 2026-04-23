@@ -30,21 +30,18 @@ class FileService:
         self.local_path = Path(settings.LOCAL_STORAGE_PATH)
         
         if self.use_local:
-            # Создаём папку для локального хранения
             self.local_path.mkdir(parents=True, exist_ok=True)
             logger.info(f"Local storage initialized: {self.local_path}")
         else:
-            # 🔹 Инициализация S3/MinIO клиента
             if not settings.s3_configured:
                 raise RuntimeError(
                     "S3/MinIO не настроен. Проверьте переменные окружения: "
                     "S3_ENDPOINT_URL, S3_ACCESS_KEY, S3_SECRET_KEY"
                 )
             
-            # Конфигурация boto3 для MinIO
             boto_config = Config(
                 signature_version='s3v4',
-                s3={'addressing_style': 'path'},  # Важно для MinIO!
+                s3={'addressing_style': 'path'},
                 region_name=settings.S3_REGION,
             )
             
@@ -87,7 +84,6 @@ class FileService:
             Dict с информацией о загруженном файле
         """
         try:
-            # Валидация категории
             valid_categories = ['banner', 'avatar', 'attachment', 'document']
             if category not in valid_categories:
                 raise HTTPException(
@@ -95,14 +91,12 @@ class FileService:
                     detail=f"Недопустимая категория файла: {category}. Разрешено: {valid_categories}"
                 )
             
-            # Валидация типа файла
             if file.content_type and not settings.is_file_type_allowed(file.content_type, category):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Недопустимый тип файла: {file.content_type}"
                 )
             
-            # Валидация размера
             content = await file.read()
             if len(content) > settings.get_max_file_size(category):
                 raise HTTPException(
@@ -151,26 +145,22 @@ class FileService:
         uploaded_by: str
     ) -> Dict[str, Any]:
         """Загрузка в локальное хранилище"""
-        # Создаём путь: uploads/{category}/{entity_id}_{timestamp}_{filename}
         category_path = self.local_path / category
         category_path.mkdir(parents=True, exist_ok=True)
         
-        # Генерируем уникальное имя файла
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         original_filename = filename or "unnamed"
         safe_filename = "".join(c for c in original_filename if c.isalnum() or c in '._-')
         file_name = f"{entity_id}_{timestamp}_{safe_filename}"
         file_path = category_path / file_name
         
-        # Сохраняем файл
         with open(file_path, "wb") as buffer:
             buffer.write(content)
         
-        # Генерируем URL для доступа через FastAPI StaticFiles
         file_url = f"/static/{category}/{file_name}"
         
         return {
-            "file_id": 0,  # Будет обновлено после сохранения метаданных в БД
+            "file_id": 0, 
             "url": file_url,
             "filename": file_name,
             "original_filename": original_filename,
@@ -181,8 +171,8 @@ class FileService:
             "entity_id": entity_id,
             "category": category,
             "uploaded_by": uploaded_by,
-            "file_key": f"{category}/{file_name}",  # Для удаления
-            "is_public": True  # Локальные файлы всегда публичные через /static
+            "file_key": f"{category}/{file_name}",
+            "is_public": True
         }
     
     async def _upload_s3(
@@ -200,17 +190,14 @@ class FileService:
         
         Генерирует pre-signed URL если бакет приватный.
         """
-        # 🔹 Формируем ключ (путь внутри бакета)
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         unique_id = uuid.uuid4().hex[:8]
         original_filename = filename or "unnamed"
         safe_filename = "".join(c for c in original_filename if c.isalnum() or c in '._-')
         
-        # Ключ: {category}/{entity_id}/{timestamp}_{unique_id}_{filename}
         file_key = f"{category}/{entity_id}/{timestamp}_{unique_id}_{safe_filename}"
         
         try:
-            # 🔹 Загружаем файл в бакет
             put_object_params = {
                 'Bucket': self.bucket_name,
                 'Key': file_key,
@@ -224,19 +211,15 @@ class FileService:
                 }
             }
             
-            # ACL только если бакет публичный
             if self.public_bucket:
                 put_object_params['ACL'] = 'public-read'
             
             self.s3_client.put_object(**put_object_params)
             logger.info(f"File uploaded to S3: {file_key}")
             
-            # 🔹 Генерируем URL для доступа
             if self.public_bucket:
-                # Прямой публичный URL
                 file_url = f"{settings.S3_ENDPOINT_URL}/{self.bucket_name}/{file_key}"
             else:
-                # 🔹 Pre-signed URL для приватного доступа
                 file_url = self.s3_client.generate_presigned_url(
                     'get_object',
                     Params={
@@ -249,7 +232,7 @@ class FileService:
                 logger.debug(f"Generated pre-signed URL (expires in {self.url_expiry}s): {file_url[:100]}...")
             
             return {
-                "file_id": 0,  # Будет обновлено после сохранения метаданных в БД
+                "file_id": 0,
                 "url": file_url,
                 "filename": safe_filename,
                 "original_filename": original_filename,
@@ -260,7 +243,7 @@ class FileService:
                 "entity_id": entity_id,
                 "category": category,
                 "uploaded_by": uploaded_by,
-                "file_key": file_key,  # 🔹 Важно: сохраняем ключ для удаления и генерации новых URL
+                "file_key": file_key, 
                 "is_public": self.public_bucket,
                 "url_expires_at": (
                     None if self.public_bucket 
@@ -315,16 +298,13 @@ class FileService:
             URL для доступа к файлу
         """
         if self.use_local:
-            # Для локального хранилища просто возвращаем путь
             return f"/static/{file_key}"
         
         expiry = expires_in or self.url_expiry
         
         if self.public_bucket:
-            # Прямой публичный URL
             return f"{settings.S3_ENDPOINT_URL}/{self.bucket_name}/{file_key}"
         else:
-            # 🔹 Генерируем pre-signed URL
             try:
                 url = self.s3_client.generate_presigned_url(
                     'get_object',
@@ -360,7 +340,6 @@ class FileService:
                 logger.warning(f"Local file not found: {file_key}")
                 return False
             else:
-                # 🔹 Удаление из S3/MinIO
                 self.s3_client.delete_object(
                     Bucket=self.bucket_name,
                     Key=file_key

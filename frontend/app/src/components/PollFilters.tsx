@@ -1,5 +1,4 @@
-// frontend/src/components/PollFilters.tsx
-import { useState, useEffect } from 'react';  // 🔹 Не нужен импорт React, если не используется JSX напрямую
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './PollFilters.css';
 
@@ -27,11 +26,10 @@ const DEFAULT_FILTERS: FilterState = {
   limit: 10,
 };
 
-// 🔹 ИСПРАВЛЕНИЕ: Убрали React.FC, добавили явную типизацию пропсов
 export const PollFilters = ({ 
   initialFilters = {}, 
   onFiltersChange 
-}: PollFiltersProps) => {  // ← Явный тип здесь!
+}: PollFiltersProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -40,7 +38,6 @@ export const PollFilters = ({
     ...initialFilters,
   });
 
-  // 🔹 Загрузка фильтров из URL при монтировании
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const loadedFilters: Partial<FilterState> = {};
@@ -56,7 +53,6 @@ export const PollFilters = ({
     setFilters(prev => ({ ...prev, ...loadedFilters }));
   }, [location.search]);
 
-  // 🔹 Сохранение фильтров в URL при изменении
   useEffect(() => {
     const params = new URLSearchParams();
     
@@ -72,7 +68,6 @@ export const PollFilters = ({
     onFiltersChange?.(filters);
   }, [filters, navigate, onFiltersChange]);
 
-  // 🔹 ИСПРАВЛЕНИЕ: Явные типы для параметров функции
   const handleChange = (key: keyof FilterState, value: string | number) => {
     setFilters(prev => ({
       ...prev,
@@ -101,7 +96,6 @@ export const PollFilters = ({
           />
         </div>
 
-        {/* 🔹 Статус */}
         <div className="filter-group">
           <label>Статус</label>
           <select
@@ -116,7 +110,6 @@ export const PollFilters = ({
           </select>
         </div>
 
-        {/* 🔹 Сортировка */}
         <div className="filter-group">
           <label>Сортировка</label>
           <div className="sort-controls">
@@ -140,7 +133,6 @@ export const PollFilters = ({
           </div>
         </div>
 
-        {/* 🔹 Пагинация */}
         <div className="filter-group">
           <label>На странице</label>
           <select

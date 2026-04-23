@@ -49,7 +49,6 @@ class DatabaseManager:
             self.session.add_all(instances)
             await self.session.commit()
             
-            # Refresh всех instances
             for instance in instances:
                 await self.session.refresh(instance)
                 
@@ -112,7 +111,6 @@ class DatabaseManager:
         result = await self.session.execute(select(model))
         return len(result.scalars().all())
 
-# Утилиты для работы с базой
 async def check_database_connection(async_engine):
     """Проверить подключение к базе данных"""
     async with async_engine.connect() as conn:

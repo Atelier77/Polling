@@ -1,11 +1,9 @@
-// C:\К_3\FS\frontend\app\src\components\Dashboard.tsx
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 import CreatePollModal from './CreatePollModal';
-import { PollBannerUpload } from './PollBannerUpload';  // 🔹 Новый импорт
+import { PollBannerUpload } from './PollBannerUpload';
 import { PollFilters, FilterState } from './PollFilters';
 import { Pagination } from './Pagination';
 import './Dashboard.css';
@@ -17,8 +15,8 @@ export interface Poll {
   end_date: string;
   total_votes: number;
   created_at: string;
-  banner_file_id?: number | null;  // 🔹 Добавлено
-  banner_url?: string | null;       // 🔹 Добавлено
+  banner_file_id?: number | null;
+  banner_url?: string | null;
   options?: Array<{
     id: number;
     text: string;
@@ -59,10 +57,8 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 🔹 Состояние для модалки создания опроса
   const [showCreateModal, setShowCreateModal] = useState(false);
   
-  // 🔹 Состояние для модалки загрузки баннера
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [currentPollId, setCurrentPollId] = useState<number | null>(null);
   const [currentPollTitle, setCurrentPollTitle] = useState<string>('');
@@ -149,7 +145,6 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
     }
   };
 
-  // 🔹 Обработчик создания опроса
   const handleCreatePoll = async (pollData: {
     title: string;
     description: string;
@@ -179,7 +174,7 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
         return {
           id: createdPoll.id,
           title: createdPoll.title
-        };  // ← Возвращаем { id: 123, title: "...", ... }
+        };
       } else {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = typeof errorData.detail === 'string' 
@@ -195,26 +190,22 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
     }
   };
 
-  // 🔹 Колбэк: опрос создан, открываем модалку загрузки баннера
   const handlePollCreated = (pollId: number, pollTitle: string) => {
     setCurrentPollId(pollId);
     setCurrentPollTitle(pollTitle);
     
-    // 🔹 Находим опрос в списке, чтобы получить текущий баннер (если есть)
     const poll = polls.find(p => p.id === pollId);
     setCurrentBannerUrl(poll?.banner_url || null);
     
     setShowBannerModal(true);
   };
 
-  // 🔹 Колбэк: баннер успешно загружен/обновлён
   const handleBannerUploaded = () => {
     setShowBannerModal(false);
     setCurrentPollId(null);
     setCurrentPollTitle('');
     setCurrentBannerUrl(null);
     
-    // 🔹 Обновляем список опросов, чтобы отобразить новый баннер
     loadPolls();
   };
 
@@ -260,7 +251,6 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
           )}
         </div>
 
-        {/* 🔹 Компонент фильтров */}
         <PollFilters 
           initialFilters={filters}
           onFiltersChange={handleFiltersChange}
@@ -302,7 +292,6 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
                     onClick={() => handlePollClick(poll.id)}
                     style={{ cursor: 'pointer' }}
                   >
-                    {/* 🔹 Отображение баннера опроса */}
                     {poll.banner_url && (
                       <div className="poll-banner">
                         <img 
@@ -356,7 +345,6 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
               })}
             </div>
 
-            {/* 🔹 Компонент пагинации */}
             <Pagination
               currentPage={filters.page}
               totalPages={pagination.pages}
@@ -366,15 +354,13 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
         )}
       </main>
 
-      {/* 🔹 Модальное окно создания опроса */}
       <CreatePollModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreatePoll}
-        onPollCreated={handlePollCreated}  // 🔹 Новый колбэк
+        onPollCreated={handlePollCreated}
       />
 
-      {/* 🔹 Модальное окно загрузки баннера */}
       {showBannerModal && currentPollId && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowBannerModal(false)}>
           <div className="modal-content" style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -392,9 +378,6 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
   );
 };
 
-// =============================================================================
-// 🔹 Компонент шапки
-// =============================================================================
 
 interface HeaderProps {
   user: {

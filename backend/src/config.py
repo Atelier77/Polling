@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: str = "minioadmin"
     S3_SECRET_KEY: str = "minioadmin"
     S3_BUCKET_NAME: str = "poll-system-files"
-    S3_REGION: str = "us-east-1"  # Требуется boto3, даже для MinIO
+    S3_REGION: str = "us-east-1"
     
     LOCAL_STORAGE_PATH: str = "backend/uploads"
     USE_LOCAL_STORAGE: bool = False

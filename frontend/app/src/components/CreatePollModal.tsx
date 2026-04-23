@@ -1,5 +1,3 @@
-// frontend/src/components/CreatePollModal.tsx
-
 import { useState, ChangeEvent, FormEvent } from 'react';
 import './CreatePollModal.css';
 import { AuthService, USER_ROLES } from '../services/AuthService';
@@ -13,7 +11,7 @@ interface CreatePollModalProps {
     end_date: string;
     options: Array<{ text: string }>;
   }) => Promise<{ id?: number; title?: string } | void> | void;
-  onPollCreated?: (pollId: number, pollTitle: string) => void;  // 🔹 Колбэк для загрузки баннера после создания
+  onPollCreated?: (pollId: number, pollTitle: string) => void;
 }
 
 interface FormData {
@@ -27,7 +25,7 @@ const CreatePollModal = ({
   isOpen, 
   onClose, 
   onCreate,
-  onPollCreated  // 🔹 Новый пропс
+  onPollCreated
 }: CreatePollModalProps) => {
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -37,71 +35,59 @@ const CreatePollModal = ({
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // 🔹 Отправка формы: создаём опрос БЕЗ баннера
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      // 🔹 Проверка прав администратора
       if (!AuthService.hasRole(USER_ROLES.ADMIN)) {
         alert('Недостаточно прав для создания опроса');
         return;
       }
       
-      // 🔹 Валидация обязательных полей
       if (!formData.title.trim() || !formData.description.trim() || !formData.end_date) {
         alert('Заполните все обязательные поля');
         return;
       }
 
-      // 🔹 Валидация длины названия
       if (formData.title.trim().length < 5) {
         alert('Название должно содержать минимум 5 символов');
         return;
       }
 
-      // 🔹 Валидация длины описания
       if (formData.description.trim().length < 10) {
         alert('Описание должно содержать минимум 10 символов');
         return;
       }
 
-      // 🔹 Валидация даты
       const endDate = new Date(formData.end_date);
       if (endDate <= new Date()) {
         alert('Дата окончания должна быть в будущем');
         return;
       }
 
-      // 🔹 Валидация вариантов ответов
       const validOptions = formData.options.filter(opt => opt.trim() !== '');
       if (validOptions.length < 2) {
         alert('Добавьте как минимум 2 варианта ответа');
         return;
       }
 
-      // 🔹 Проверка на уникальность вариантов
       const uniqueOptions = new Set(validOptions.map(opt => opt.toLowerCase().trim()));
       if (uniqueOptions.size !== validOptions.length) {
         alert('Варианты ответов должны быть уникальными');
         return;
       }
 
-      // 🔹 Создание опроса
       const result = await onCreate({
         ...formData,
         options: validOptions.map(opt => ({ text: opt.trim() }))
       });
       
-      // 🔹 Если опрос создан успешно и есть колбэк — уведомляем родителя
       if (result && typeof result === 'object' && 'id' in result && result.id) {
         console.log('Poll created with ID:', result.id);
         
-        // 🔹 Закрываем модалку создания
         onClose();
         
-        // 🔹 Сбрасываем форму
         setFormData({
           title: '',
           description: '',
@@ -109,12 +95,10 @@ const CreatePollModal = ({
           options: ['', '']
         });
         
-        // 🔹 Вызываем колбэк для загрузки баннера (если передан)
         if (onPollCreated) {
           onPollCreated(result.id, result.title || formData.title);
         }
       } else {
-        // Если onCreate не вернул ID — просто закрываем
         onClose();
         setFormData({
           title: '',
@@ -132,7 +116,6 @@ const CreatePollModal = ({
     }
   };
 
-  // 🔹 Добавление варианта ответа
   const addOption = () => {
     setFormData(prev => ({
       ...prev,
@@ -140,7 +123,6 @@ const CreatePollModal = ({
     }));
   };
 
-  // 🔹 Удаление варианта ответа
   const removeOption = (index: number) => {
     if (formData.options.length > 2) {
       setFormData(prev => ({
@@ -150,7 +132,6 @@ const CreatePollModal = ({
     }
   };
 
-  // 🔹 Обновление текста варианта ответа
   const updateOption = (index: number, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -158,7 +139,6 @@ const CreatePollModal = ({
     }));
   };
 
-  // 🔹 Если модалка закрыта — не рендерим
   if (!isOpen) return null;
 
   return (
@@ -248,7 +228,6 @@ const CreatePollModal = ({
             </button>
           </div>
 
-          {/* 🔹 Информационное сообщение о баннере */}
           <div className="form-group" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #eee' }}>
             <label>Баннер опроса</label>
             <div className="banner-hint">

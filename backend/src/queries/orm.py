@@ -85,7 +85,6 @@ class PollRepository(DatabaseManager):
     async def create_poll_with_options(self, title: str, description: str, end_date: str, options: List[str]) -> Poll:
         """Создать опрос с вариантами ответов"""
         try:
-            # Создаем опрос
             poll = Poll(
                 title=title,
                 description=description,
@@ -93,9 +92,8 @@ class PollRepository(DatabaseManager):
                 total_votes=0
             )
             self.session.add(poll)
-            await self.session.flush()  # Получаем ID опроса
+            await self.session.flush()
 
-            # Создаем варианты ответов
             for option_text in options:
                 option = Option(
                     poll_id=poll.id,
@@ -113,14 +111,12 @@ class PollRepository(DatabaseManager):
 
     async def update_poll_votes(self, poll_id: int) -> None:
         """Обновить total_votes для опроса"""
-        # Считаем общее количество голосов для этого опроса
         result = await self.session.execute(
             select(func.sum(Option.votes))
             .where(Option.poll_id == poll_id)
         )
         total_votes = result.scalar() or 0
 
-        # Обновляем опрос
         await self.session.execute(
             update(Poll)
             .where(Poll.id == poll_id)
@@ -171,7 +167,6 @@ class VoteRepository(DatabaseManager):
     async def create_vote(self, poll_id: int, option_id: int, student_id: str) -> Dict[str, Any]:
         """Создать голос и обновить счетчики"""
         try:
-            # Проверяем, существует ли вариант ответа и принадлежит ли он опросу
             option_result = await self.session.execute(
                 select(Option).where(
                     and_(Option.id == option_id, Option.poll_id == poll_id)
@@ -182,22 +177,18 @@ class VoteRepository(DatabaseManager):
             if not option:
                 raise ValueError("Option not found or does not belong to the poll")
 
-            # Проверяем, не голосовал ли уже пользователь в этом опросе
             if await self.has_user_voted_in_poll(poll_id, student_id):
                 raise ValueError("User has already voted in this poll")
 
-            # Создаем запись голоса
             vote = await self.create(Vote,
                 poll_id=poll_id,
                 option_id=option_id,
                 student_id=student_id
             )
 
-            # Обновляем счетчик голосов для варианта ответа
             option_repo = OptionRepository(self.session)
             await option_repo.increment_votes(option_id)
 
-            # Обновляем общее количество голосов для опроса
             poll_repo = PollRepository(self.session)
             await poll_repo.update_poll_votes(poll_id)
 
@@ -212,14 +203,12 @@ class VoteRepository(DatabaseManager):
 
     async def get_poll_results(self, poll_id: int) -> Dict[str, Any]:
         """Получить результаты голосования для опроса"""
-        # Получаем опрос с вариантами
         poll_repo = PollRepository(self.session)
         poll = await poll_repo.get_by_id_with_details(poll_id)
         
         if not poll:
             return None
 
-        # Получаем общее количество голосовавших
         result = await self.session.execute(
             select(func.count(Vote.id))
             .where(Vote.poll_id == poll_id)

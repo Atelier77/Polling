@@ -1,4 +1,3 @@
-// C:\К_3\FS\frontend\app\src\components\Results.tsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';

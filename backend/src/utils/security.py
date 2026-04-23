@@ -1,12 +1,11 @@
-# backend/src/utils/security.py
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from src.config import settings
 from src.models.user import UserRole
 import hashlib
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # минут
-REFRESH_TOKEN_EXPIRE_DAYS = 3     # дней
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+REFRESH_TOKEN_EXPIRE_DAYS = 3
 
 def create_access_token(data: dict, role: UserRole | str = UserRole.USER):
     """Создание access токена (короткое время жизни)"""

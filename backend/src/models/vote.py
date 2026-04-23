@@ -17,7 +17,6 @@ class Vote(Base):
     
     user = relationship("User", back_populates="votes")
 
-# Pydantic модели
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 

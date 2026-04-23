@@ -1,4 +1,3 @@
-// C:\К_3\FS\frontend\app\src\components\ProtectedRoute.tsx
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthService, USER_ROLES } from '../services/AuthService';

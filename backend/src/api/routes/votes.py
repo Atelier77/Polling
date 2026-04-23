@@ -11,27 +11,24 @@ router = APIRouter()
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def vote(
-    vote_data: VoteCreate,  # ← Pydantic модель, доступ через .poll_id
+    vote_data: VoteCreate,
     db: DatabaseDep,
-    current_user: CurrentUser  # ← Переименовали для ясности
+    current_user: CurrentUser 
 ):
     """
     Проголосовать в опросе
     """
     try:
-        # 🔹 Получаем данные из Pydantic модели (через точку, не .get()!)
         poll_id = vote_data.poll_id
         option_id = vote_data.option_id
         student_id = current_user.get("student_id")
         
-        # 🔹 Проверяем, не голосовал ли уже пользователь
         if await has_user_voted(db, poll_id, student_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, 
                 detail="Вы уже голосовали в этом опросе"
             )
         
-        # 🔹 Получаем опцию из БД (чтобы увеличить счётчик)
         option_result = await db.execute(
             select(Option).where(Option.id == option_id)
         )
@@ -43,7 +40,6 @@ async def vote(
                 detail="Вариант ответа не найден"
             )
         
-        # 🔹 Получаем опрос из БД (чтобы увеличить общий счётчик)
         poll_result = await db.execute(
             select(Poll).where(Poll.id == poll_id)
         )
@@ -55,29 +51,24 @@ async def vote(
                 detail="Опрос не найден"
             )
         
-        # 🔹 Проверяем, что опция принадлежит этому опросу
         if option.poll_id != poll_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Вариант ответа не принадлежит этому опросу"
             )
         
-        # 🔹 Создаём голос
         new_vote = Vote(
             poll_id=poll_id,
             option_id=option_id,
             student_id=student_id
         )
-        db.add(new_vote)  # Добавляем в сессию
+        db.add(new_vote) 
         
-        # 🔹 Увеличиваем счётчики
         option.votes += 1
         poll.total_votes += 1
         
-        # 🔹 Сохраняем все изменения в БД
         await db.commit()
         
-        # 🔹 Обновляем объект голоса (получаем ID)
         await db.refresh(new_vote)
         
         print(f"✅ Vote created: user={student_id}, poll={poll_id}, option={option_id}")
@@ -89,10 +80,8 @@ async def vote(
         }
         
     except HTTPException:
-        # 🔹 Пропускаем уже обработанные ошибки
         raise
     except Exception as e:
-        # 🔹 Откат при непредвиденной ошибке
         await db.rollback()
         print(f"❌ Error creating vote: {str(e)}")
         raise HTTPException(

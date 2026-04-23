@@ -26,10 +26,8 @@ class Option(Base):
     text = Column(String, nullable=False)
     votes = Column(Integer, default=0)
     
-    # Relationships
     poll = relationship("Poll", back_populates="options")
 
-# Pydantic модели
 from pydantic import BaseModel, ConfigDict
 from typing import List
 from datetime import datetime

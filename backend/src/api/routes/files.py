@@ -1,4 +1,3 @@
-# backend/src/api/routes/files.py
 import logging
 from pathlib import Path
 from typing import Optional
@@ -45,14 +44,12 @@ async def upload_file(
     Возвращает pre-signed URL если бакет приватный.
     """
     try:
-        # 🔹 Проверка прав: только авторизованные пользователи
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Требуется авторизация"
             )
         
-        # 🔹 Валидация entity_type
         valid_entity_types = ['poll', 'user', 'option']
         if entity_type not in valid_entity_types:
             raise HTTPException(
@@ -60,12 +57,9 @@ async def upload_file(
                 detail=f"Недопустимый тип сущности. Разрешено: {valid_entity_types}"
             )
         
-        # 🔹 Проверка прав на сущность (опционально)
         if entity_type == 'poll' and current_user.get('role') != 'admin':
-            # Можно добавить проверку: пользователь — создатель опроса
             pass
         
-        # 🔹 Загрузка через FileService
         file_service = FileService()
         upload_result = await file_service.upload_file(
             file=file,
@@ -75,7 +69,6 @@ async def upload_file(
             uploaded_by=current_user.get('student_id') or str(current_user.get('id'))
         )
         
-        # 🔹 Сохранение метаданных в БД
         file_meta = FileMetadata(
             entity_type=entity_type,
             entity_id=entity_id,
@@ -90,7 +83,6 @@ async def upload_file(
         await db.commit()
         await db.refresh(file_meta)
         
-        # 🔹 Обновляем file_id в ответе
         upload_result['file_id'] = file_meta.id
         
         logger.info(f"File uploaded: {upload_result['file_key']} by {current_user.get('student_id')}")
@@ -123,16 +115,13 @@ async def get_file_info(
                 detail="Файл не найден"
             )
         
-        # 🔹 Проверка прав доступа
         if file_meta.uploaded_by != current_user.get('student_id') and current_user.get('role') != 'admin':
-            # Можно разрешить публичный доступ к некоторым категориям
             if file_meta.category not in ['banner', 'avatar']:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Недостаточно прав для просмотра этого файла"
                 )
         
-        # 🔹 Генерируем актуальный URL (для приватных бакетов)
         file_service = FileService()
         current_url = file_service.get_download_url(file_meta.file_key)
         
@@ -148,7 +137,7 @@ async def get_file_info(
             size_formatted=f"{file_meta.size_bytes / 1024 / 1024:.2f} MB",
             uploaded_by=file_meta.uploaded_by,
             uploaded_at=file_meta.uploaded_at,
-            url=current_url  # 🔹 Актуальный pre-signed URL
+            url=current_url
         )
         
     except HTTPException:
@@ -180,7 +169,6 @@ async def download_file(
                 detail="Файл не найден"
             )
         
-        # 🔹 Проверка прав
         if file_meta.uploaded_by != current_user.get('student_id') and current_user.get('role') != 'admin':
             if file_meta.category not in ['banner', 'avatar']:
                 raise HTTPException(
@@ -188,7 +176,6 @@ async def download_file(
                     detail="Недостаточно прав для скачивания"
                 )
         
-        # 🔹 Генерируем pre-signed URL
         file_service = FileService()
         download_url = file_service.get_download_url(
             file_key=file_meta.file_key,
@@ -228,20 +215,17 @@ async def delete_file(
                 detail="Файл не найден"
             )
         
-        # 🔹 Проверка прав
         if file_meta.uploaded_by != current_user.get('student_id') and current_user.get('role') != 'admin':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Недостаточно прав для удаления"
             )
         
-        # 🔹 Удаление из хранилища
         file_service = FileService()
         deleted = await file_service.delete_file(file_meta.file_key)
         if not deleted:
             logger.warning(f"File storage deletion failed: {file_meta.file_key}")
         
-        # 🔹 Удаление метаданных из БД
         await db.delete(file_meta)
         await db.commit()
         
@@ -281,7 +265,6 @@ async def list_files(
         
         query = select(FileMetadata)
         
-        # Фильтрация
         if entity_type:
             query = query.where(FileMetadata.entity_type == entity_type)
         if entity_id:
@@ -289,11 +272,9 @@ async def list_files(
         if category:
             query = query.where(FileMetadata.category == category)
         
-        # 🔹 Фильтр по пользователю (только свои файлы, если не админ)
         if current_user.get('role') != 'admin':
             query = query.where(FileMetadata.uploaded_by == current_user.get('student_id'))
         
-        # Пагинация
         total_query = select(func.count()).select_from(query.subquery())
         total_result = await db.execute(total_query)
         total = total_result.scalar() or 0
@@ -304,7 +285,6 @@ async def list_files(
         result = await db.execute(query)
         files_meta = result.scalars().all()
         
-        # 🔹 Генерируем актуальные URL для каждого файла
         file_service = FileService()
         file_infos = []
         for fm in files_meta:
