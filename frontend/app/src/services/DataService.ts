@@ -238,17 +238,41 @@ export const DataService = {
     }
   },
 
-  async getPolls(queryString?: string): Promise<Poll[] | PaginatedResponse<Poll>> {
-    try {
-      const endpoint = queryString ? `/api/polls?${queryString}` : '/api/polls';
-      const polls = await this.request(endpoint); 
-      this.cachePolls(polls);
-      return polls;
-    } catch (error) {
-      console.warn('Backend недоступен, используем кэш:', error);
-      return this.getCachedPolls();
+  // 🔹 Убедитесь, что метод существует и работает:
+
+async getPolls(queryString: string = ''): Promise<any> {
+  console.log('🔍 DataService.getPolls called');  // ← 🔹 Отладка!
+  
+  const token = localStorage.getItem('access_token');
+  console.log('🔍 DataService: token exists:', !!token);  // ← 🔹 Отладка!
+  
+  try {
+    const response = await fetch(`http://localhost:8000/api/polls/${queryString ? '?' + queryString : ''}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    
+    console.log('🔍 DataService: Response status:', response.status);  // ← 🔹 Отладка!
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ DataService: Error response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-  },
+    
+    const data = await response.json();
+    console.log('🔍 DataService: Response data:', data);  // ← 🔹 Отладка!
+    
+    return data;
+    
+  } catch (error) {
+    console.error('❌ DataService.getPolls failed:', error);
+    throw error;
+  }
+},
 
   async getPollById(pollId: number): Promise<Poll | null> {
     try {
@@ -448,18 +472,15 @@ async uploadFile(
   try {
     const token = localStorage.getItem('access_token');
     
-    // Используем XMLHttpRequest для отслеживания прогресса загрузки
     const xhr = new XMLHttpRequest();
     
     return new Promise((resolve) => {
-      // 🔹 Отслеживание прогресса
       xhr.upload.addEventListener('progress', (event: ProgressEvent) => {
         if (onProgress && event.lengthComputable) {
           onProgress(event);
         }
       });
       
-      // 🔹 Обработка успешного ответа
       xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
@@ -470,7 +491,6 @@ async uploadFile(
             resolve({ success: true });
           }
         } else {
-          // 🔹 Обработка ошибки от сервера
           try {
             const errorData = JSON.parse(xhr.responseText);
             const errorMessage = errorData.detail || errorData.message || 'Ошибка загрузки';
@@ -484,27 +504,21 @@ async uploadFile(
         }
       });
       
-      // 🔹 Обработка сетевых ошибок
       xhr.addEventListener('error', () => {
         resolve({ success: false, error: 'Ошибка сети. Проверьте подключение к серверу.' });
       });
       
-      // 🔹 Обработка таймаута
       xhr.addEventListener('timeout', () => {
         resolve({ success: false, error: 'Таймаут загрузки. Файл слишком большой или медленное соединение.' });
       });
       
-      // 🔹 Настройка запроса
       xhr.open('POST', `${API_BASE_URL}/api/files/upload`);
-      xhr.timeout = 300000; // 5 минут таймаут для больших файлов
+      xhr.timeout = 300000;
       
-      // 🔹 Добавляем токен авторизации
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
-      // 🔹 Content-Type устанавливается автоматически для FormData
-      
-      // 🔹 Отправка
+
       xhr.send(formData);
     });
     

@@ -1,48 +1,71 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
-
+from src.database.connection import get_db
 from src.models.user import UserCreate, UserUpdateRole, UserRole
 from src.services.auth_service import AuthService
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
 from src.utils.security import hash_token
+from src.schemas.user import Token, UserRegister, UserLogin
 
-router = APIRouter()
+router = APIRouter(tags=["Auth"])
 
-
-@router.post("/login", status_code=status.HTTP_200_OK)
-async def login(
-    user_data: UserCreate,
-    db: DatabaseDep,
-    request: Request
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def register(
+    user_data: UserRegister,
+    db: DatabaseDep
 ):
     """
-    пара access и refresh токенов
+    Регистрация нового пользователя
     """
     try:
         auth_service = AuthService(db)
         
-        user = await auth_service.authenticate_user(
-            student_id=user_data.student_id,
-            name=user_data.name,
-            faculty=user_data.faculty
-        )
+        user = await auth_service.register(user_data)
         
-        ip_address = request.client.host if request.client else None
-        user_agent = request.headers.get("user-agent", None)
-        
-        tokens = await auth_service.create_token_pair(
-            user=user,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
+        tokens = await auth_service.create_token_pair(user)
         
         return tokens
         
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ошибка авторизации: {str(e)}"
+            detail=str(e)
+        )
+
+@router.post("/login", response_model=Token)
+async def login(
+    credentials: UserLogin,
+    db: DatabaseDep
+):
+    """
+    Вход в систему
+    """
+    try:
+        auth_service = AuthService(db)
+        
+        user = await auth_service.authenticate(
+            credentials.student_id, 
+            credentials.password
+        )
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверный номер студенческого или пароль",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        tokens = await auth_service.create_token_pair(user)
+
+        return tokens
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка входа: {str(e)}"
         )
 
 
@@ -52,17 +75,49 @@ async def refresh_token(
     request: Request,
     refresh_token: str = None
 ):
-    """
-    Обновление access токена через refresh токен
-    Тело запроса: {"refresh_token": "..."}
-    Или заголовок: Authorization: Bearer <refresh_token>
-    """
-    try:
-        if not refresh_token:
-            auth_header = request.headers.get("Authorization", "")
-            if auth_header.startswith("Bearer "):
-                refresh_token = auth_header[7:]
+    # """
+    # Обновление access токена через refresh токен
+    # Тело запроса: {"refresh_token": "..."}
+    # Или заголовок: Authorization: Bearer <refresh_token>
+    # """
+    # try:
+    #     if not refresh_token:
+    #         auth_header = request.headers.get("Authorization", "")
+    #         if auth_header.startswith("Bearer "):
+    #             refresh_token = auth_header[7:]
         
+    #     if not refresh_token:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_400_BAD_REQUEST,
+    #             detail="Refresh token не предоставлен"
+    #         )
+        
+    #     auth_service = AuthService(db)
+    #     ip_address = request.client.host if request.client else None
+        
+    #     tokens = await auth_service.refresh_access_token(
+    #         refresh_token=refresh_token,
+    #         ip_address=ip_address
+    #     )
+        
+    #     if not tokens:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_401_UNAUTHORIZED,
+    #             detail="Refresh token истёк или был отозван",
+    #             headers={"WWW-Authenticate": "Bearer"},
+    #         )
+        
+    #     return tokens
+        
+    # except HTTPException:
+    #     raise
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail=f"Ошибка обновления токена: {str(e)}"
+    #     )
+
+    try:
         if not refresh_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

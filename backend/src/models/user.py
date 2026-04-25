@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -17,6 +18,7 @@ class User(Base):
     name = Column(String, nullable=False)
     faculty = Column(String, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
@@ -34,11 +36,15 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     pass
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
-    role: UserRole
-    created_at: datetime
-    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+    student_id: str
+    name: str
+    faculty: str
+    role: str
+    created_at: Optional[datetime] = None
+    
+    model_config = {"from_attributes": True, "use_enum_values": True}
 
 class UserUpdateRole(BaseModel):
     role: UserRole
@@ -46,5 +52,7 @@ class UserUpdateRole(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: Optional[int] = None
     user: UserResponse

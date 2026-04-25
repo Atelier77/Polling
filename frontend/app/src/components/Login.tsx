@@ -1,63 +1,79 @@
-import { useState, ChangeEvent, FormEvent, KeyboardEvent } from 'react';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { AuthService } from '../services/AuthService';
 import './Login.css';
 
 interface LoginProps {
-  onLogin: (studentId: string) => Promise<{ success: boolean; error?: string }>;
+  onLogin: (studentId: string, password: string) => Promise<void>;
 }
 
 const Login = ({ onLogin }: LoginProps) => {
+  const navigate = useNavigate();
   const [studentId, setStudentId] = useState('');
+  const [password, setPassword] = useState(''); 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (!studentId.trim()) {
-      alert('Пожалуйста, введите номер студенческого билета');
+      setError('Введите номер студенческого');
       return;
     }
-
+    
+    if (!password) { 
+      setError('Введите пароль');
+      return;
+    }
+    
     setLoading(true);
     
     try {
-      const result = await onLogin(studentId);
+      const result = await AuthService.login(studentId, password);
       
-      if (!result.success) {
-        alert(result.error || 'Ошибка при авторизации');
+      if (result.success) {
+        await onLogin(studentId, password);
+        navigate('/dashboard', { replace: true });
+      } else {
+        setError(result.error || 'Ошибка входа');
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Ошибка при авторизации');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка сети');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSubmit(e as unknown as FormEvent<HTMLFormElement>);
-    }
-  };
-
   return (
     <div className="login-container">
-      <div className="login-screen">
-        <div className="logo">
-          <i className="fas fa-chart-bar"></i>
-        </div>
-        <h1>Система опросов и голосований</h1>
-        <p>Авторизуйтесь как студент для участия в голосованиях</p>
+      <div className="login-box">
+        <h2>Вход в систему</h2>
+        <p className="login-subtitle">Введите ваши данные для входа</p>
+        
+        {error && <div className="error-message">{error}</div>}
         
         <form onSubmit={handleSubmit}>
-          <div className="input-group">
-            <label htmlFor="studentId">Номер студенческого билета</label>
-            <input 
-              type="text" 
-              id="studentId"
+          <div className="form-group">
+            <label>Номер студенческого</label>
+            <input
+              type="text"
               value={studentId}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setStudentId(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Введите номер студенческого" 
+              onChange={(e) => setStudentId(e.target.value)}
+              placeholder="Например: 777"
+              disabled={loading}
+            />
+          </div>
+          
+          {/* 🔹 Добавили поле пароля */}
+          <div className="form-group">
+            <label>Пароль</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Введите пароль"
               disabled={loading}
             />
           </div>
@@ -67,23 +83,18 @@ const Login = ({ onLogin }: LoginProps) => {
             className="login-btn"
             disabled={loading}
           >
-            {loading ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i>
-                Вход...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-user"></i>
-                Войти
-              </>
-            )}
+            {loading ? 'Вход...' : 'Войти'}
           </button>
         </form>
         
-        <div className="anonymity-notice">
-          <h3><i className="fas fa-shield-alt"></i> Гарантия анонимности</h3>
-          <p>Все голоса полностью анонимны. Ваша личность не будет связана с вашим выбором.</p>
+        {/* 🔹 Добавили ссылку на регистрацию */}
+        <div className="login-footer">
+          <p>
+            Нет аккаунта?{' '}
+            <Link to="/register" className="link">
+              Зарегистрироваться
+            </Link>
+          </p>
         </div>
       </div>
     </div>

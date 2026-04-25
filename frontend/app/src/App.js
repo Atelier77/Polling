@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
+import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Poll from './components/Poll';
 import Results from './components/Results';
@@ -14,75 +15,94 @@ function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => { 
     initializeAuth(); 
   }, []);
 
+  useEffect(() => {
+    console.log('🔍 App: State changed:', { isAuthenticated, user, userRole });
+  }, [isAuthenticated, user, userRole]);
+
   const initializeAuth = async () => {
     try {
-      console.log('App: Initializing auth...');
+      console.log('🔍 App: Initializing auth...');
+      
       const authStatus = await AuthService.checkAuth();
-      console.log('App: Auth status:', authStatus);
+      console.log('🔍 App: authStatus =', authStatus);
       
       setIsAuthenticated(authStatus);
       
       if (authStatus) {
         const userData = AuthService.getCurrentUser();
         const role = AuthService.getUserRole();
-        console.log('App: User ', userData);
-        console.log('App: Role:', role);
+        
+        console.log('🔍 App: userData from service =', userData);
+        console.log('🔍 App: role from service =', role);
+        
         setUser(userData);
         setUserRole(role);
       }
     } catch (error) {
-      console.error('App: Initialization error:', error);
+      console.error('❌ App: Initialization error:', error);
       setIsAuthenticated(false);
+      setUser(null);
+      setUserRole(null);
     } finally {
+      console.log('🔍 App: initializeAuth finished, loading = false');
       setLoading(false);
-      setInitializing(false);
     }
   };
 
-  const handleLogin = async (studentId) => {
+  const handleLogin = async (studentId, password) => {
     try {
       setLoading(true);
-      console.log('App: Login attempt for', studentId);
-      const result = await AuthService.login(studentId);
+      console.log('🔍 App: Login attempt for', studentId);
+      
+      const result = await AuthService.login(studentId, password);
       
       if (result.success) {
-        console.log('App: Login success', result);
+        console.log('🔍 App: Login success');
+        console.log('🔍 App: result.user =', result.user);
+        console.log('🔍 App: result.role =', result.role);
+        
         setIsAuthenticated(true);
-        setUser(result.user);
-        setUserRole(result.role);
+        setUser(result.user || null);
+        setUserRole(result.role || null);
+        
         await DataService.syncPendingVotes();
+        
+        window.location.href = '/dashboard';
+        
       } else {
-        console.warn('App: Login failed', result.error);
+        console.warn('🔍 App: Login failed:', result.error);
       }
       return result;
     } catch (error) {
       console.error('App: Login error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    console.log('App: Logout');
+    console.log('App: Logout called');
     await AuthService.logout();
+    
     setIsAuthenticated(false);
     setUser(null);
     setUserRole(null);
+    
+    window.location.href = '/login';
   };
 
   if (loading) {
-    console.log('App: Rendering loading screen');
+    console.log('🔍 App: Rendering loading screen');
     return <div className="loading-screen">Загрузка...</div>;
   }
 
-  console.log('App: Rendering routes', { isAuthenticated, userRole });
+  console.log('🔍 App: Rendering routes', { isAuthenticated, user, userRole });
 
   return (
     <Router>
@@ -93,10 +113,18 @@ function App() {
             element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
           />
           <Route 
+            path="/register" 
+            element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" replace />} 
+          />
+          <Route 
             path="/dashboard" 
             element={
               <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
-                <Dashboard user={user} userRole={userRole} onLogout={handleLogout} />
+                <Dashboard 
+                  user={user}
+                  userRole={userRole}
+                  onLogout={handleLogout} 
+                />
               </ProtectedRoute>
             } 
           />
@@ -104,7 +132,10 @@ function App() {
             path="/poll/:pollId" 
             element={
               <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
-                <Poll user={user} userRole={userRole} />
+                <Poll 
+                  user={user} 
+                  userRole={userRole} 
+                />
               </ProtectedRoute>
             } 
           /> 
@@ -112,7 +143,10 @@ function App() {
             path="/results/:pollId" 
             element={
               <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
-                <Results user={user} userRole={userRole} />
+                <Results 
+                  user={user} 
+                  userRole={userRole} 
+                />
               </ProtectedRoute>
             } 
           />
@@ -120,7 +154,12 @@ function App() {
             path="/admin" 
             element={
               <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
-                <Dashboard user={user} userRole={userRole} onLogout={handleLogout} adminView={true} />
+                <Dashboard 
+                  user={user} 
+                  userRole={userRole} 
+                  onLogout={handleLogout} 
+                  adminView={true} 
+                />
               </ProtectedRoute>
             } 
           />

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import hashlib
-
+from passlib.context import CryptContext
 from src.models.user import User, UserRole
 from src.models.token import RefreshToken
 from src.queries.orm import Repository
@@ -13,7 +13,9 @@ from src.utils.security import (
     hash_token
 )
 from src.config import settings
+from src.schemas.user import UserRegister
 
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 class AuthService:
     """
@@ -29,36 +31,89 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = Repository(db)
+
     
-    async def authenticate_user(self, student_id: str, name: str, faculty: str) -> Optional[User]:
+    def hash_password(self, password: str) -> str:
+
+        print(f"🔍 DEBUG hash_password:")
+        print(f"   Type: {type(password)}")
+        print(f"   Value: {repr(password)}")
+        print(f"   Length: {len(password) if isinstance(password, str) else 'N/A'}")
+        
+        if not isinstance(password, str):
+            password = str(password)
+        
+        if len(password.encode('utf-8')) > 72:
+            password_bytes = password.encode('utf-8')[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
+        
+        return pwd_context.hash(password)
+    
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        return pwd_context.verify(plain_password, hashed_password)
+    
+
+    async def register(self, user_data: UserRegister) -> User:
+
+        user = await self.repo.users.get_by_student_id(user_data.student_id)
+        
+        if user:
+            raise ValueError("Пользователь с таким номером студенческого уже существует")
+        
+        hashed_password = self.hash_password(user_data.password)
+        
+        new_user = User(
+            student_id=user_data.student_id,
+            name=user_data.name,
+            faculty=user_data.faculty,
+            password_hash=hashed_password,
+            role="USER"
+        )
+        
+        self.db.add(new_user)
+        await self.db.commit()
+        await self.db.refresh(new_user)
+
+        return new_user
+    
+    # async def authenticate_user(self, student_id: str, name: str, faculty: str) -> Optional[User]:
+
+    #     user = await self.repo.users.get_by_student_id(student_id)
+        
+    #     if not user:
+    #         admin_student_ids = ["777"]
+    #         role = UserRole.ADMIN if student_id in admin_student_ids else UserRole.USER
+            
+    #         user = await self.repo.users.create_user(
+    #             student_id=student_id,
+    #             name=name,
+    #             faculty=faculty,
+    #             role=role
+    #         )
+        
+    #     return user
+    
+    async def authenticate(self, student_id: str, password: str) -> Optional[User]:
 
         user = await self.repo.users.get_by_student_id(student_id)
         
         if not user:
-            admin_student_ids = ["777"]
-            role = UserRole.ADMIN if student_id in admin_student_ids else UserRole.USER
-            
-            user = await self.repo.users.create_user(
-                student_id=student_id,
-                name=name,
-                faculty=faculty,
-                role=role
-            )
+            return None
+        
+        if not self.verify_password(password, user.password_hash):
+            return None
         
         return user
     
     async def create_token_pair(self, user: User, ip_address: str = None, user_agent: str = None) -> dict:
 
-        # 1. Создаём access токен (короткое время жизни)
         access_token = create_access_token(
             data={"sub": user.student_id},
             role=user.role
         )
         
-        # 2. Создаём refresh токен (длительное время жизни)
         refresh_token, expires_at = create_refresh_token(user.student_id)
         
-        # 3. Сохраняем refresh токен в БД через репозиторий
         await self.repo.refresh_tokens.create_token(
             student_id=user.student_id,
             token_hash=hash_token(refresh_token),
@@ -67,7 +122,6 @@ class AuthService:
             user_agent=user_agent
         )
         
-        # 4. Возвращаем пару токенов (refresh токен — только один раз!)
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,

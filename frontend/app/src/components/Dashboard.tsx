@@ -1,3 +1,5 @@
+// frontend/src/components/Dashboard.tsx
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
@@ -42,7 +44,17 @@ interface DashboardProps {
   adminView?: boolean;
 }
 
-const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
+const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
+  // 🔹 ОТЛАДКА: проверяем пропсы при каждом рендере
+  useEffect(() => {
+    console.log('🔍 Dashboard: Props received:', {
+      userName: user?.name,
+      userStudentId: user?.student_id,
+      userRole: userRole,
+      isAdmin: (userRole?.toLowerCase() === USER_ROLES.ADMIN) || adminView
+    });
+  }, [user, userRole, adminView]);
+
   const navigate = useNavigate();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [filters, setFilters] = useState<FilterState>({
@@ -64,48 +76,60 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
   const [currentPollTitle, setCurrentPollTitle] = useState<string>('');
   const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(null);
 
-  const isAdmin = userRole === USER_ROLES.ADMIN;
+  // 🔹 Надёжная проверка админа (с приведением к lowercase)
+  const isAdmin = (userRole?.toLowerCase() === USER_ROLES.ADMIN) || adminView;
 
   useEffect(() => {
     loadPolls();
   }, [filters]);
 
   const loadPolls = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  console.log('🔍 loadPolls: STARTED');  // ← 🔹 Отладка!
+  
+  try {
+    setLoading(true);
+    setError(null);
 
-      const params = new URLSearchParams();
-      
-      if (filters.search) params.append('search', filters.search);
-      if (filters.status !== 'all') params.append('status', filters.status);
-      params.append('sort_by', filters.sortBy);
-      params.append('sort_order', filters.sortOrder);
-      params.append('page', filters.page.toString());
-      params.append('limit', filters.limit.toString());
+    const params = new URLSearchParams();
+    
+    if (filters.search) params.append('search', filters.search);
+    if (filters.status !== 'all') params.append('status', filters.status);
+    params.append('sort_by', filters.sortBy);
+    params.append('sort_order', filters.sortOrder);
+    params.append('page', filters.page.toString());
+    params.append('limit', filters.limit.toString());
 
-      const data = await DataService.getPolls(params.toString());
-      
-      if (Array.isArray(data)) {
-        setPolls(data);
-        setPagination({ total: data.length, pages: Math.ceil(data.length / filters.limit) });
-      } else if (data && typeof data === 'object' && 'items' in data) {
-        setPolls(data.items);
-        setPagination({ 
-          total: data.total || 0, 
-          pages: data.pages || Math.ceil((data.total || 0) / filters.limit)
-        });
-      } else {
-        setPolls([]);
-        setPagination({ total: 0, pages: 0 });
-      }
-    } catch (err) {
-      console.error('Error loading polls:', err);
-      setError('Не удалось загрузить опросы. Проверьте подключение к серверу.');
-    } finally {
-      setLoading(false);
+    const queryString = params.toString();
+    console.log('🔍 loadPolls: Fetching /api/polls/?' + queryString);  // ← 🔹 Отладка!
+    
+    const data = await DataService.getPolls(queryString);
+    
+    console.log('🔍 loadPolls: Response received:', data);  // ← 🔹 Отладка!
+    
+    if (Array.isArray(data)) {
+      setPolls(data);
+      setPagination({ total: data.length, pages: Math.ceil(data.length / filters.limit) });
+    } else if (data && typeof data === 'object' && 'items' in data) {
+      setPolls(data.items);
+      setPagination({ 
+        total: data.total || 0, 
+        pages: data.pages || Math.ceil((data.total || 0) / filters.limit)
+      });
+    } else {
+      setPolls([]);
+      setPagination({ total: 0, pages: 0 });
     }
-  };
+    
+    console.log('🔍 loadPolls: COMPLETED');  // ← 🔹 Отладка!
+    
+  } catch (err) {
+    console.error('❌ loadPolls: ERROR:', err);  // ← 🔹 Отладка!
+    setError('Не удалось загрузить опросы. Проверьте подключение к серверу.');
+  } finally {
+    setLoading(false);  // ← 🔹 Должно выполниться всегда!
+    console.log('🔍 loadPolls: finally block executed, loading=false');  // ← 🔹 Отладка!
+  }
+};
 
   const handlePollClick = (pollId: number) => {
     const hasVoted = DataService.hasVotedLocally(pollId);
@@ -378,10 +402,14 @@ const Dashboard = ({ user, userRole, onLogout }: DashboardProps) => {
   );
 };
 
+// =============================================================================
+// 🔹 Компонент шапки
+// =============================================================================
 
 interface HeaderProps {
   user: {
-    id?: number | string,
+    id?: number | string;
+    student_id: string;  // ← 🔹 ДОБАВЛЕНО: поле student_id
     name: string;
     faculty: string;
   } | null;
@@ -389,31 +417,49 @@ interface HeaderProps {
   onLogout: () => void;
 }
 
-const Header = ({ user, userRole, onLogout }: HeaderProps) => (
-  <header className="header">
-    <div className="header-content">
-      <div className="user-info">
-        <div className="avatar">
-          {user?.name ? user.name.charAt(0).toUpperCase() : 'С'}
+const Header = ({ user, userRole, onLogout }: HeaderProps) => {
+
+  console.log('🔍 Header: user =', user);
+  console.log('🔍 Header: user?.name =', user?.name);
+  console.log('🔍 Header: user?.student_id =', user?.student_id);
+  console.log('🔍 Header: userRole =', userRole);
+  
+  // 🔹 Безопасное получение имени для отображения
+  const displayName = user?.name 
+    ? user.name 
+    : user?.student_id 
+      ? `Студент ${user.student_id}` 
+      : 'Студент';
+  
+  // 🔹 Безопасное определение роли для отображения
+  const displayRole = userRole?.toLowerCase() === USER_ROLES.ADMIN ? 'Админ' : 'Пользователь';
+  
+  return (
+    <header className="header">
+      <div className="header-content">
+        <div className="user-info">
+          <div className="avatar">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <div className="user-details">
+            <h2>
+              {displayName}
+              {userRole && (
+                <span className={`role-badge ${userRole}`}>
+                  {displayRole}
+                </span>
+              )}
+            </h2>
+            <p>{user?.faculty || 'Факультет информатики'}</p>
+          </div>
         </div>
-        <div className="user-details">
-          <h2>
-            {user?.name || `Студент ${user?.id}`}
-            {userRole && (
-              <span className={`role-badge ${userRole}`}>
-                {userRole === USER_ROLES.ADMIN ? 'Админ' : 'Пользователь'}
-              </span>
-            )}
-          </h2>
-          <p>{user?.faculty || 'Факультет информатики'}</p>
-        </div>
+        <button className="logout-btn" onClick={onLogout}>
+          <i className="fas fa-sign-out-alt"></i>
+          Выйти
+        </button>
       </div>
-      <button className="logout-btn" onClick={onLogout}>
-        <i className="fas fa-sign-out-alt"></i>
-        Выйти
-      </button>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 export default Dashboard;
