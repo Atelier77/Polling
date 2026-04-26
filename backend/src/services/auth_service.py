@@ -76,23 +76,6 @@ class AuthService:
 
         return new_user
     
-    # async def authenticate_user(self, student_id: str, name: str, faculty: str) -> Optional[User]:
-
-    #     user = await self.repo.users.get_by_student_id(student_id)
-        
-    #     if not user:
-    #         admin_student_ids = ["777"]
-    #         role = UserRole.ADMIN if student_id in admin_student_ids else UserRole.USER
-            
-    #         user = await self.repo.users.create_user(
-    #             student_id=student_id,
-    #             name=name,
-    #             faculty=faculty,
-    #             role=role
-    #         )
-        
-    #     return user
-    
     async def authenticate(self, student_id: str, password: str) -> Optional[User]:
 
         user = await self.repo.users.get_by_student_id(student_id)

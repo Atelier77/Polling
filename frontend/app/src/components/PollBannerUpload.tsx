@@ -28,7 +28,6 @@ export const PollBannerUpload = ({
     setError(null);
     
     try {
-      // 🔹 Привязываем файл к опросу через backend endpoint
       await DataService.request(`/api/polls/${pollId}/banner`, {
         method: 'PUT',
         body: JSON.stringify({ 
@@ -75,7 +74,6 @@ export const PollBannerUpload = ({
         <h3>Баннер для опроса: {pollTitle}</h3>
       </div>
       
-      {/* 🔹 Текущий баннер */}
       {currentBannerUrl && (
         <div className="current-banner">
           <p>Текущий баннер:</p>
@@ -96,13 +94,12 @@ export const PollBannerUpload = ({
         </div>
       )}
       
-      {/* 🔹 Загрузка нового баннера */}
       <div className="upload-section">
         <p>{currentBannerUrl ? 'Заменить баннер:' : 'Загрузить баннер:'}</p>
         
         <FileUpload
           entityType="poll"
-          entityId={pollId}  // 🔹 Правильный ID опроса!
+          entityId={pollId}
           category="banner"
           accept="image/*"
           maxSizeMB={5}
@@ -120,13 +117,13 @@ export const PollBannerUpload = ({
         
         {success && !uploading && (
           <div className="success-message">
-            ✅ Баннер успешно добавлен!
+            Баннер успешно добавлен!
           </div>
         )}
         
         {error && (
           <div className="error-message" role="alert">
-            ❌ {error}
+            {error}
           </div>
         )}
       </div>

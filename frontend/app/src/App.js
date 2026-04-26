@@ -44,7 +44,7 @@ function App() {
         setUserRole(role);
       }
     } catch (error) {
-      console.error('❌ App: Initialization error:', error);
+      console.error('App: Initialization error:', error);
       setIsAuthenticated(false);
       setUser(null);
       setUserRole(null);
@@ -88,13 +88,26 @@ function App() {
 
   const handleLogout = async () => {
     console.log('App: Logout called');
+
+    try {
     await AuthService.logout();
+  } catch (error) {
+    console.warn('App: Logout API error, continuing anyway:', error);
+  }
     
     setIsAuthenticated(false);
     setUser(null);
     setUserRole(null);
     
-    window.location.href = '/login';
+  //   window.location.replace('/login');
+  
+  // // 🔹 4. Альтернатива: если replace не сработал, пробуем href
+  // setTimeout(() => {
+  //   if (window.location.pathname !== '/login') {
+  //     console.log('🔍 App: Forced redirect to /login');
+  //     window.location.href = '/login';
+  //   }
+  // }, 100);
   };
 
   if (loading) {

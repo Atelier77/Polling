@@ -17,12 +17,12 @@ from src.models.file  import FileMetadata
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+
     await create_tables()  
-    print("✅ Database tables created")
+    print("Database tables created !")
     yield
-    # Shutdown
-    print("🛑 Application shutdown")
+
+    print("Application shutdown !!!")
 
 app = FastAPI(
     title="Система студенческих опросов",

@@ -75,48 +75,6 @@ async def refresh_token(
     request: Request,
     refresh_token: str = None
 ):
-    # """
-    # Обновление access токена через refresh токен
-    # Тело запроса: {"refresh_token": "..."}
-    # Или заголовок: Authorization: Bearer <refresh_token>
-    # """
-    # try:
-    #     if not refresh_token:
-    #         auth_header = request.headers.get("Authorization", "")
-    #         if auth_header.startswith("Bearer "):
-    #             refresh_token = auth_header[7:]
-        
-    #     if not refresh_token:
-    #         raise HTTPException(
-    #             status_code=status.HTTP_400_BAD_REQUEST,
-    #             detail="Refresh token не предоставлен"
-    #         )
-        
-    #     auth_service = AuthService(db)
-    #     ip_address = request.client.host if request.client else None
-        
-    #     tokens = await auth_service.refresh_access_token(
-    #         refresh_token=refresh_token,
-    #         ip_address=ip_address
-    #     )
-        
-    #     if not tokens:
-    #         raise HTTPException(
-    #             status_code=status.HTTP_401_UNAUTHORIZED,
-    #             detail="Refresh token истёк или был отозван",
-    #             headers={"WWW-Authenticate": "Bearer"},
-    #         )
-        
-    #     return tokens
-        
-    # except HTTPException:
-    #     raise
-    # except Exception as e:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail=f"Ошибка обновления токена: {str(e)}"
-    #     )
-
     try:
         if not refresh_token:
             raise HTTPException(
@@ -200,7 +158,6 @@ async def update_user_role_endpoint(
     db: DatabaseDep,
     current_admin: CurrentAdmin
 ):
-    #Изменить роль пользователя (только для администратор имеет права доступа)
     from src.queries.users import update_user_role
     
     if student_id == current_admin["student_id"] and role_data.role != UserRole.ADMIN:
@@ -228,7 +185,6 @@ async def get_all_users_endpoint(
     db: DatabaseDep,
     current_admin: CurrentAdmin
 ):
-    #Получить список всех пользователей (только для администратор имеет права доступа)
     from src.queries.users import get_all_users
     users = await get_all_users(db)
     return {"success": True, "count": len(users), "users": users}

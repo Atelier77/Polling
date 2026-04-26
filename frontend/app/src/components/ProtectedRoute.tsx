@@ -1,9 +1,8 @@
-import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 
 interface ProtectedRouteProps {
-  children: ReactNode;
+  children: React.ReactNode;
   allowedRoles?: string[];
   redirectTo?: string;
 }
@@ -18,29 +17,23 @@ const ProtectedRoute = ({
   const accessToken = localStorage.getItem('access_token');
   const isAuthenticated = !!accessToken;
   
-  const userRole = AuthService.getUserRole();
-  
-  console.log('=== ProtectedRoute Debug ===');
-  console.log('Path:', location.pathname);
-  console.log('Access token exists:', isAuthenticated);
-  console.log('User role:', userRole);
-  console.log('Allowed roles:', allowedRoles);
-
   if (!isAuthenticated) {
-    console.log('→ No token, redirect to', redirectTo);
+    console.log('ProtectedRoute: No token → redirect to', redirectTo);
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
-
+  
   if (allowedRoles.length > 0) {
+    const userRole = AuthService.getUserRole();
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-    if (!roles.includes(userRole)) {
-      console.log('→ Role mismatch. User:', userRole, 'Allowed:', roles);
+    const userRoleLower = userRole?.toLowerCase();
+    
+    if (!userRoleLower || !roles.some(role => role.toLowerCase() === userRoleLower)) {
+      console.log('ProtectedRoute: Role mismatch → redirect to /dashboard');
       return <Navigate to="/dashboard" replace />;
     }
   }
   
-  console.log('→ Access granted, rendering children');
-  return children;
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;

@@ -1,9 +1,7 @@
-// frontend/src/components/Register.tsx
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
-import './Login.css';  // Можно использовать те же стили
+import './Login.css';
 
 const Register = () => {
   const navigate = useNavigate();

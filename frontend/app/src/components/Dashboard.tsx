@@ -1,7 +1,7 @@
 // frontend/src/components/Dashboard.tsx
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import { AuthService, USER_ROLES } from '../services/AuthService';
 import CreatePollModal from './CreatePollModal';
@@ -45,6 +45,9 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   // 🔹 ОТЛАДКА: проверяем пропсы при каждом рендере
   useEffect(() => {
     console.log('🔍 Dashboard: Props received:', {
@@ -55,7 +58,6 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
     });
   }, [user, userRole, adminView]);
 
-  const navigate = useNavigate();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -79,57 +81,115 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
   // 🔹 Надёжная проверка админа (с приведением к lowercase)
   const isAdmin = (userRole?.toLowerCase() === USER_ROLES.ADMIN) || adminView;
 
+  // =============================================================================
+  // 🔹 Синхронизация фильтров с URL (ОДИН useEffect, без цикла!)
+  // =============================================================================
+  
+  // 1. Чтение фильтров из URL при первой загрузке / изменении параметров
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const loadedFilters: Partial<FilterState> = {};
+    
+    if (params.get('search')) loadedFilters.search = params.get('search')!;
+    if (params.get('status')) loadedFilters.status = params.get('status') as FilterState['status'];
+    if (params.get('sortBy')) loadedFilters.sortBy = params.get('sortBy') as FilterState['sortBy'];
+    if (params.get('sortOrder')) loadedFilters.sortOrder = params.get('sortOrder') as FilterState['sortOrder'];
+    if (params.get('page')) loadedFilters.page = parseInt(params.get('page')!, 10);
+    if (params.get('limit')) loadedFilters.limit = parseInt(params.get('limit')!, 10);
+    if (params.get('faculty')) loadedFilters.faculty = params.get('faculty')!;
+    
+    // Обновляем состояние только если есть новые параметры
+    if (Object.keys(loadedFilters).length > 0) {
+      setFilters(prev => {
+        // Избегаем бесконечного цикла: обновляем только если значения отличаются
+        const newFilters = { ...prev, ...loadedFilters };
+        const isDifferent = JSON.stringify(prev) !== JSON.stringify(newFilters);
+        return isDifferent ? newFilters : prev;
+      });
+    }
+  }, [location.search]);
+
+  // 2. Обновление URL при изменении фильтров (с debounce-подобной защитой)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (filters.search) params.set('search', filters.search);
+    if (filters.status !== 'all') params.set('status', filters.status);
+    params.set('sortBy', filters.sortBy);
+    params.set('sortOrder', filters.sortOrder);
+    if (filters.page > 1) params.set('page', filters.page.toString());
+    if (filters.limit !== 10) params.set('limit', filters.limit.toString());
+    if (filters.faculty) params.set('faculty', filters.faculty);
+    
+    // 🔹 Навигация с replace (не создаёт новую запись в истории)
+    const queryString = params.toString();
+    const currentQuery = location.search;
+    
+    // Обновляем URL только если строка запроса действительно изменилась
+    if (queryString !== currentQuery) {
+      navigate(`?${queryString}`, { replace: true });
+    }
+  }, [filters, navigate, location.search]);
+
+  // =============================================================================
+  // 🔹 Загрузка данных
+  // =============================================================================
+  
   useEffect(() => {
     loadPolls();
   }, [filters]);
 
   const loadPolls = async () => {
-  console.log('🔍 loadPolls: STARTED');  // ← 🔹 Отладка!
-  
-  try {
-    setLoading(true);
-    setError(null);
+    console.log('🔍 loadPolls: STARTED');
+    
+    try {
+      setLoading(true);
+      setError(null);
 
-    const params = new URLSearchParams();
-    
-    if (filters.search) params.append('search', filters.search);
-    if (filters.status !== 'all') params.append('status', filters.status);
-    params.append('sort_by', filters.sortBy);
-    params.append('sort_order', filters.sortOrder);
-    params.append('page', filters.page.toString());
-    params.append('limit', filters.limit.toString());
+      const params = new URLSearchParams();
+      
+      if (filters.search) params.append('search', filters.search);
+      if (filters.status !== 'all') params.append('status', filters.status);
+      params.append('sort_by', filters.sortBy);
+      params.append('sort_order', filters.sortOrder);
+      params.append('page', filters.page.toString());
+      params.append('limit', filters.limit.toString());
 
-    const queryString = params.toString();
-    console.log('🔍 loadPolls: Fetching /api/polls/?' + queryString);  // ← 🔹 Отладка!
-    
-    const data = await DataService.getPolls(queryString);
-    
-    console.log('🔍 loadPolls: Response received:', data);  // ← 🔹 Отладка!
-    
-    if (Array.isArray(data)) {
-      setPolls(data);
-      setPagination({ total: data.length, pages: Math.ceil(data.length / filters.limit) });
-    } else if (data && typeof data === 'object' && 'items' in data) {
-      setPolls(data.items);
-      setPagination({ 
-        total: data.total || 0, 
-        pages: data.pages || Math.ceil((data.total || 0) / filters.limit)
-      });
-    } else {
-      setPolls([]);
-      setPagination({ total: 0, pages: 0 });
+      const queryString = params.toString();
+      console.log('🔍 loadPolls: Fetching /api/polls/?' + queryString);
+      
+      const data = await DataService.getPolls(queryString);
+      
+      console.log('🔍 loadPolls: Response received:', data);
+      
+      if (Array.isArray(data)) {
+        setPolls(data);
+        setPagination({ total: data.length, pages: Math.ceil(data.length / filters.limit) });
+      } else if (data && typeof data === 'object' && 'items' in data) {
+        setPolls(data.items);
+        setPagination({ 
+          total: data.total || 0, 
+          pages: data.pages || Math.ceil((data.total || 0) / filters.limit)
+        });
+      } else {
+        setPolls([]);
+        setPagination({ total: 0, pages: 0 });
+      }
+      
+      console.log('🔍 loadPolls: COMPLETED');
+      
+    } catch (err) {
+      console.error('❌ loadPolls: ERROR:', err);
+      setError('Не удалось загрузить опросы. Проверьте подключение к серверу.');
+    } finally {
+      setLoading(false);
+      console.log('🔍 loadPolls: finally block executed, loading=false');
     }
-    
-    console.log('🔍 loadPolls: COMPLETED');  // ← 🔹 Отладка!
-    
-  } catch (err) {
-    console.error('❌ loadPolls: ERROR:', err);  // ← 🔹 Отладка!
-    setError('Не удалось загрузить опросы. Проверьте подключение к серверу.');
-  } finally {
-    setLoading(false);  // ← 🔹 Должно выполниться всегда!
-    console.log('🔍 loadPolls: finally block executed, loading=false');  // ← 🔹 Отладка!
-  }
-};
+  };
+
+  // =============================================================================
+  // 🔹 Обработчики событий
+  // =============================================================================
 
   const handlePollClick = (pollId: number) => {
     const hasVoted = DataService.hasVotedLocally(pollId);
@@ -234,12 +294,29 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
   };
 
   const handleFiltersChange = (newFilters: FilterState) => {
+    // 🔹 Просто обновляем состояние — useEffect сам обновит URL
     setFilters(newFilters);
   };
 
   const handlePageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
   };
+
+  // =============================================================================
+  // 🔹 Рендеринг
+  // =============================================================================
+
+  // 🔹 Показываем заглушку, если user ещё не загрузился
+  if (!user && loading) {
+    return (
+      <div className="dashboard-container">
+        <div className="loading-state">
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>Загрузка профиля...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && polls.length === 0) {
     return (
@@ -409,7 +486,7 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
 interface HeaderProps {
   user: {
     id?: number | string;
-    student_id: string;  // ← 🔹 ДОБАВЛЕНО: поле student_id
+    student_id: string;
     name: string;
     faculty: string;
   } | null;
@@ -418,12 +495,6 @@ interface HeaderProps {
 }
 
 const Header = ({ user, userRole, onLogout }: HeaderProps) => {
-
-  console.log('🔍 Header: user =', user);
-  console.log('🔍 Header: user?.name =', user?.name);
-  console.log('🔍 Header: user?.student_id =', user?.student_id);
-  console.log('🔍 Header: userRole =', userRole);
-  
   // 🔹 Безопасное получение имени для отображения
   const displayName = user?.name 
     ? user.name 

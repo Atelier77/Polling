@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import './PollFilters.css';
 
 export interface FilterState {
@@ -30,8 +29,6 @@ export const PollFilters = ({
   initialFilters = {}, 
   onFiltersChange 
 }: PollFiltersProps) => {
-  const navigate = useNavigate();
-  const location = useLocation();
   
   const [filters, setFilters] = useState<FilterState>({
     ...DEFAULT_FILTERS,
@@ -39,34 +36,8 @@ export const PollFilters = ({
   });
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const loadedFilters: Partial<FilterState> = {};
-    
-    if (params.get('search')) loadedFilters.search = params.get('search')!;
-    if (params.get('status')) loadedFilters.status = params.get('status') as FilterState['status'];
-    if (params.get('sortBy')) loadedFilters.sortBy = params.get('sortBy') as FilterState['sortBy'];
-    if (params.get('sortOrder')) loadedFilters.sortOrder = params.get('sortOrder') as FilterState['sortOrder'];
-    if (params.get('page')) loadedFilters.page = parseInt(params.get('page')!, 10);
-    if (params.get('limit')) loadedFilters.limit = parseInt(params.get('limit')!, 10);
-    if (params.get('faculty')) loadedFilters.faculty = params.get('faculty')!;
-    
-    setFilters(prev => ({ ...prev, ...loadedFilters }));
-  }, [location.search]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    
-    if (filters.search) params.set('search', filters.search);
-    if (filters.status !== 'all') params.set('status', filters.status);
-    params.set('sortBy', filters.sortBy);
-    params.set('sortOrder', filters.sortOrder);
-    if (filters.page > 1) params.set('page', filters.page.toString());
-    if (filters.limit !== 10) params.set('limit', filters.limit.toString());
-    if (filters.faculty) params.set('faculty', filters.faculty);
-    
-    navigate({ search: params.toString() }, { replace: true });
     onFiltersChange?.(filters);
-  }, [filters, navigate, onFiltersChange]);
+  }, [filters, onFiltersChange]);
 
   const handleChange = (key: keyof FilterState, value: string | number) => {
     setFilters(prev => ({
@@ -78,13 +49,12 @@ export const PollFilters = ({
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
-    navigate({ pathname: location.pathname, search: '' }, { replace: true });
+    onFiltersChange?.(DEFAULT_FILTERS);
   };
 
   return (
     <div className="poll-filters">
       <div className="filters-row">
-        {/* 🔹 Поиск */}
         <div className="filter-group">
           <label>Поиск</label>
           <input

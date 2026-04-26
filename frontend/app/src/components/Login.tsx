@@ -66,7 +66,6 @@ const Login = ({ onLogin }: LoginProps) => {
             />
           </div>
           
-          {/* 🔹 Добавили поле пароля */}
           <div className="form-group">
             <label>Пароль</label>
             <input
@@ -87,7 +86,6 @@ const Login = ({ onLogin }: LoginProps) => {
           </button>
         </form>
         
-        {/* 🔹 Добавили ссылку на регистрацию */}
         <div className="login-footer">
           <p>
             Нет аккаунта?{' '}

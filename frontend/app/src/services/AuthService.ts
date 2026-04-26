@@ -1,5 +1,3 @@
-// frontend/src/services/AuthService.ts
-
 import { DataService } from './DataService';
 
 const USE_FAKE_TOKENS = false;
@@ -55,20 +53,14 @@ interface TokenData {
   expiresIn: number;
 }
 
-// =============================================================================
-// 🔹 ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: Извлечение читаемого сообщения об ошибке
-// =============================================================================
-
 function extractErrorMessage(errorData: any): string {
   if (!errorData) return 'Произошла ошибка';
   
-  // 🔹 Прямая строка
   if (typeof errorData === 'string') return errorData;
   
-  // 🔹 Ошибки валидации FastAPI (422)
   if (errorData.detail) {
     if (Array.isArray(errorData.detail)) {
-      // Массив ошибок валидации
+
       return errorData.detail
         .map((err: any) => err.msg || err.message || JSON.stringify(err))
         .join('; ');
@@ -84,24 +76,14 @@ function extractErrorMessage(errorData: any): string {
     }
   }
   
-  // 🔹 Стандартное поле message
   if (errorData.message) return errorData.message;
   
-  // 🔹Fallback: сериализуем объект
   return typeof errorData === 'object' 
     ? JSON.stringify(errorData) 
     : 'Произошла ошибка';
 }
 
-// =============================================================================
-// 🔹 ОСНОВНОЙ СЕРВИС
-// =============================================================================
-
 export const AuthService = {
-  
-  // =============================================================================
-  // 🔹 РЕГИСТРАЦИЯ
-  // =============================================================================
   
   async register(
     studentId: string,
@@ -130,13 +112,12 @@ export const AuthService = {
         })
       });
 
-      console.log('🔍 Register response status:', response.status);
+      console.log('Register response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Register success:', data);
+        console.log('Register success:', data);
         
-        // 🔹 Сохраняем токены
         if (data.access_token && data.refresh_token) {
           AuthService._saveTokens({
             accessToken: data.access_token,
@@ -145,7 +126,6 @@ export const AuthService = {
           });
         }
         
-        // 🔹 Сохраняем пользователя
         if (data.user) {
           const backendRole = data.user.role?.toLowerCase();
           const userRole: UserRole = 
@@ -190,21 +170,17 @@ export const AuthService = {
       }
       
     } catch (error: any) {
-      console.error('❌ Registration failed:', error);
+      console.error('Registration failed:', error);
       return { 
         success: false, 
         error: error.message || 'Сервер недоступен' 
       };
     }
   },
-
-  // =============================================================================
-  // 🔹 ВХОД
-  // =============================================================================
   
   async login(studentId: string, password: string): Promise<AuthResponse> {
     try {
-      console.log('🔍 AuthService.login called:', {
+      console.log('AuthService.login called:', {
         studentId,
         passwordLength: password?.length
       });
@@ -227,34 +203,32 @@ export const AuthService = {
         body: JSON.stringify(requestBody)
       });
 
-      console.log('🔍 Login response status:', response.status);
+      console.log('Login response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Login response ', {
+        console.log('Login response ', {
           has_access_token: !!data.access_token,
           has_refresh_token: !!data.refresh_token,
           has_user: !!data.user,
           user_role: data.user?.role
         });
         
-        // 🔹 Сохраняем токены
         if (data.access_token && data.refresh_token) {
-          console.log('🔍 Saving tokens...');
+          console.log('Saving tokens...');
           AuthService._saveTokens({
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             expiresIn: data.expires_in || 900
           });
-          console.log('🔍 Tokens saved. Verifying:');
+          console.log('Tokens saved. Verifying:');
           console.log('   access_token:', localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ? '✓' : '✗');
         } else {
-          console.warn('🔍 Tokens NOT saved: missing access_token or refresh_token');
+          console.warn('Tokens NOT saved: missing access_token or refresh_token');
         }
         
-        // 🔹 Сохраняем пользователя
         if (data.user) {
-          console.log('🔍 Saving user data...');
+          console.log('Saving user data...');
           const backendRole = data.user.role?.toLowerCase();
           const userRole: UserRole = 
             backendRole === 'admin' ? USER_ROLES.ADMIN :
@@ -273,7 +247,7 @@ export const AuthService = {
           
           AuthService._saveUser(typedUser);
           localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
-          console.log('🔍 User saved. Verifying:');
+          console.log('   User saved. Verifying:');
           console.log('   user_', localStorage.getItem(STORAGE_KEYS.USER) ? '✓' : '✗');
           console.log('   auth_status:', localStorage.getItem(STORAGE_KEYS.AUTH));
           
@@ -287,14 +261,14 @@ export const AuthService = {
             isLocal: false
           };
         } else {
-          console.warn('🔍 User data NOT saved: data.user is missing');
+          console.warn('User data NOT saved: data.user is missing');
         }
         
         return { success: true };
         
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.warn('🔍 Login failed:', errorData);
+        console.warn('Login failed:', errorData);
         
         return { 
           success: false, 
@@ -303,17 +277,13 @@ export const AuthService = {
       }
       
     } catch (error: any) {
-      console.error('❌ Login failed:', error);
+      console.error('Login failed:', error);
       return { 
         success: false, 
         error: error.message || 'Сервер недоступен' 
       };
     }
   },
-
-  // =============================================================================
-  // 🔹 ОБНОВЛЕНИЕ ТОКЕНА
-  // =============================================================================
   
   async refreshAccessToken(): Promise<boolean> {
     try {
@@ -341,53 +311,45 @@ export const AuthService = {
       return false;
     }
   },
-
-  // =============================================================================
-  // 🔹 ПРОВЕРКА АВТОРИЗАЦИИ
-  // =============================================================================
   
   async checkAuth(): Promise<boolean> {
-    console.log('🔍 checkAuth: STARTED');
+    console.log('checkAuth: STARTED');
     
     const isAuth = localStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
     const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     
-    console.log('🔍 checkAuth: isAuth=', isAuth, ', accessToken exists=', !!accessToken);
+    console.log('checkAuth: isAuth=', isAuth, ', accessToken exists=', !!accessToken);
     
     if (!isAuth || !accessToken) {
-      console.log('🔍 checkAuth: returning false (no auth/token)');
+      console.log('checkAuth: returning false (no auth/token)');
       return false;
     }
     
     if (accessToken.startsWith('fake_token_')) {
-      console.warn('🔍 checkAuth: fake token detected');
+      console.warn('checkAuth: fake token detected');
       AuthService.logout();
       return false;
     }
     
     const expiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
     if (expiry && Date.now() >= parseInt(expiry, 10)) {
-      console.log('🔍 checkAuth: token expired, attempting refresh...');
+      console.log('checkAuth: token expired, attempting refresh...');
       
       const refreshed = await AuthService.refreshAccessToken();
       
       if (!refreshed) {
-        console.log('🔍 checkAuth: refresh failed');
+        console.log('checkAuth: refresh failed');
         AuthService.logout();
         return false;
       }
     }
     
-    console.log('🔍 checkAuth: returning true');
+    console.log('checkAuth: returning true');
     return true;
   },
-
-  // =============================================================================
-  // 🔹 ВЫХОД
-  // =============================================================================
   
   async logout(): Promise<void> {
-    console.log('🔍 AuthService.logout called');
+    console.log('AuthService.logout called');
     
     const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     
@@ -399,23 +361,17 @@ export const AuthService = {
       }
     }
     
-    // 🔹 Очищаем все ключи
     (Object.keys(STORAGE_KEYS) as Array<keyof typeof STORAGE_KEYS>).forEach(key => {
       localStorage.removeItem(STORAGE_KEYS[key]);
     });
     localStorage.removeItem('user_role');
     
-    console.log('🔍 AuthService.logout: localStorage cleared');
+    console.log('AuthService.logout: localStorage cleared');
     
-    // 🔹 Перенаправление
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
+    // if (window.location.pathname !== '/login') {
+    //   window.location.href = '/login';
+    // }
   },
-
-  // =============================================================================
-  // 🔹 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-  // =============================================================================
   
   getUserRole(): UserRole {
     const user = AuthService.getCurrentUser();
@@ -438,20 +394,20 @@ export const AuthService = {
 
   getCurrentUser(): UserData | null {
     const userStr = localStorage.getItem(STORAGE_KEYS.USER);
-    console.log('🔍 getCurrentUser: raw =', userStr ? 'EXISTS' : 'NULL');
+    console.log('getCurrentUser: raw =', userStr ? 'EXISTS' : 'NULL');
     
     if (!userStr) return null;
     
     try {
       const user = JSON.parse(userStr) as UserData;
-      console.log('🔍 getCurrentUser: parsed =', {
+      console.log('getCurrentUser: parsed =', {
         name: user.name,
         student_id: user.student_id,
         role: user.role
       });
       return user;
     } catch (error) {
-      console.error('❌ Error parsing user ', error);
+      console.error('Error parsing user ', error);
       return null;
     }
   },
@@ -472,10 +428,6 @@ export const AuthService = {
   isUser(): boolean {
     return AuthService.hasRole([USER_ROLES.USER, USER_ROLES.ADMIN]);
   },
-
-  // =============================================================================
-  // 🔹 ПРИВАТНЫЕ МЕТОДЫ
-  // =============================================================================
   
   _saveTokens({ accessToken, refreshToken, expiresIn }: TokenData): void {
     console.log('🔍 _saveTokens called:', { 
@@ -490,14 +442,14 @@ export const AuthService = {
     const expiryTime = Date.now() + (expiresIn * 1000) - 30000;
     localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
     
-    console.log('🔍 _saveTokens done. Verifying:');
+    console.log('   _saveTokens done. Verifying:');
     console.log('   ACCESS_TOKEN:', localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ? '✓' : '✗');
     console.log('   REFRESH_TOKEN:', localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) ? '✓' : '✗');
     console.log('   TOKEN_EXPIRY:', localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY));
   },
 
   _saveUser(user: UserData): void {
-    console.log('🔍 _saveUser called:', { 
+    console.log('_saveUser called:', { 
       student_id: user.student_id, 
       name: user.name,
       role: user.role 
@@ -508,7 +460,7 @@ export const AuthService = {
       localStorage.setItem('user_role', user.role);
     }
     
-    console.log('🔍 _saveUser done. Verifying:');
+    console.log('   _saveUser done. Verifying:');
     console.log('   USER:', localStorage.getItem(STORAGE_KEYS.USER) ? '✓' : '✗');
     console.log('   user_role:', localStorage.getItem('user_role'));
   }

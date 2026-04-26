@@ -238,13 +238,11 @@ export const DataService = {
     }
   },
 
-  // 🔹 Убедитесь, что метод существует и работает:
-
 async getPolls(queryString: string = ''): Promise<any> {
-  console.log('🔍 DataService.getPolls called');  // ← 🔹 Отладка!
+  console.log('DataService.getPolls called');
   
   const token = localStorage.getItem('access_token');
-  console.log('🔍 DataService: token exists:', !!token);  // ← 🔹 Отладка!
+  console.log('DataService: token exists:', !!token);
   
   try {
     const response = await fetch(`http://localhost:8000/api/polls/${queryString ? '?' + queryString : ''}`, {
@@ -255,21 +253,21 @@ async getPolls(queryString: string = ''): Promise<any> {
       }
     });
     
-    console.log('🔍 DataService: Response status:', response.status);  // ← 🔹 Отладка!
+    console.log('DataService: Response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ DataService: Error response:', errorText);
+      console.error('DataService: Error response:', errorText);
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
     
     const data = await response.json();
-    console.log('🔍 DataService: Response data:', data);  // ← 🔹 Отладка!
+    console.log('DataService: Response data:', data);
     
     return data;
     
   } catch (error) {
-    console.error('❌ DataService.getPolls failed:', error);
+    console.error('DataService.getPolls failed:', error);
     throw error;
   }
 },
@@ -459,12 +457,6 @@ async getPolls(queryString: string = ''): Promise<any> {
     window.location.href = '/login';
   },
 
-
-/**
- * Загрузка файла в объектное хранилище
- * @param formData FormData с файлом и метаданными
- * @param onProgress Callback для отслеживания прогресса
- */
 async uploadFile(
   formData: FormData,
   onProgress?: (event: ProgressEvent) => void
@@ -531,10 +523,6 @@ async uploadFile(
   }
 },
 
-/**
- * Получение pre-signed URL для скачивания файла
- * @param fileId ID файла в базе данных
- */
 async getFileDownloadUrl(fileId: number): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
     const response = await this.request(`/api/files/${fileId}/download`);
@@ -576,7 +564,7 @@ async getFileStorageConfig(): Promise<FileStorageConfig | null> {
       headers: {
         'Content-Type': 'application/json',
       },
-      // 🔹 Не добавляем Authorization — эндпоинт публичный
+
     });
     
     if (response.ok) {
@@ -584,7 +572,6 @@ async getFileStorageConfig(): Promise<FileStorageConfig | null> {
       return config as FileStorageConfig;
     }
     
-    // Если эндпоинт не найден или ошибка — возвращаем дефолт
     console.warn('Failed to fetch file config, using defaults');
     return null;
     
