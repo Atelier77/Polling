@@ -1,27 +1,27 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import { AuthService, USER_ROLES } from '../services/AuthService';
+import SEO from './SEO';
 import './Results.css';
 
-interface Option {
+interface OptionResult {
   id: number;
   text: string;
   votes: number;
+  percentage?: number;
 }
 
-interface Poll {
+interface PollResult {
   id: number;
   title: string;
   description: string;
   end_date: string;
   total_votes: number;
-  options?: Option[];
-}
-
-interface ResultsData {
-  poll: Poll;
-  options: Array<Option & { percentage?: number }>;
+  options: OptionResult[];
+  created_at: string;
+  banner_url?: string | null;
+  has_ended?: boolean;
 }
 
 interface ResultsProps {
@@ -29,84 +29,113 @@ interface ResultsProps {
     name?: string;
     id?: string | number;
     faculty?: string;
+    student_id?: string;
   } | null;
   userRole: string | null;
 }
 
 const Results = ({ user, userRole }: ResultsProps) => {
   const { pollId } = useParams<{ pollId: string }>();
-  const [poll, setPoll] = useState<Poll | null>(null);
-  const [results, setResults] = useState<ResultsData | null>(null);
+  const navigate = useNavigate();
+  
+  const [results, setResults] = useState<PollResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
 
   useEffect(() => {
+    console.log('🔍 Results: Props received:', {
+      userName: user?.name,
+      userRole: userRole,
+      pollId: pollId
+    });
+  }, [user, userRole, pollId]);
+
+  useEffect(() => {
+    if (!pollId) {
+      setError('ID опроса не указан');
+      setLoading(false);
+      return;
+    }
+    
     loadResults();
-    checkVoteStatus();
   }, [pollId]);
-      
+
   const loadResults = async () => {
     try {
       setLoading(true);
-      const resultsData = await DataService.getPollResults(Number(pollId));
-      if (resultsData) {
-        setResults(resultsData);
-        setPoll(resultsData.poll);
-      } else {
-        const pollData = await DataService.getPollById(Number(pollId));
-        if (pollData) {
-          setPoll(pollData);
-          setResults({ poll: pollData, options: pollData.options || [] });
-        } else {
-          setError('Опрос не найден');
-        }
+      setError(null);
+
+      const id = Number(pollId);
+      if (!id || isNaN(id)) {
+        setError('Неверный ID опроса');
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error('Error loading results:', err);
-      const errorMessage = err instanceof Error ? err.message : '';
-      if (errorMessage.includes('403') || errorMessage.includes('прав')) {
-        setError('Недостаточно прав для просмотра результатов');
+
+      console.log('🔍 Results: Loading results for poll', id);
+      const data = await DataService.getPollResults(id);
+      
+      if (data?.poll) {
+        const totalVotes = data.total_votes || data.poll.total_votes || 0;
+        const optionsWithPercent = data.options?.map(opt => ({
+          ...opt,
+          percentage: totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0
+        })) || [];
+        
+        setResults({
+          ...data.poll,
+          options: optionsWithPercent,
+          total_votes: totalVotes,
+          has_ended: data.has_ended || new Date() > new Date(data.poll.end_date)
+        });
       } else {
-        setError('Ошибка при загрузке результатов');
+        setError('Результаты не найдены');
       }
+    } catch (err: any) {
+      console.error('Results: Load error:', err);
+      setError(err.message || 'Ошибка при загрузке результатов');
     } finally {
       setLoading(false);
     }
   };
 
-  const checkVoteStatus = async () => {
-    try {
-      const voteCheck = await DataService.checkVote(Number(pollId));
-      setHasVoted(voteCheck.has_voted);
-    } catch (err) {
-      const localVoted = DataService.hasVotedLocally(Number(pollId));
-      setHasVoted(localVoted);
-    }
-  };
-
-  const canViewResults = (): boolean => {
-    if (AuthService.hasRole(USER_ROLES.ADMIN)) return true;
-    if (AuthService.hasRole(USER_ROLES.USER)) {
-      if (hasVoted) return true;
-      if (poll?.end_date && new Date() > new Date(poll.end_date)) return true;
-    }
-    return false;
-  };
-
   const formatDate = (dateString: string): string => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    if (!dateString) return 'Дата не указана';
+    
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
     return new Date(dateString).toLocaleDateString('ru-RU', options);
   };
 
-  if (!loading && !canViewResults()) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const getBarWidth = (percentage: number): string => {
+    return percentage === 0 ? '2px' : `${Math.max(percentage, 2)}%`;
+  };
+
+  const getBarColor = (index: number): string => {
+    const colors = [
+      'var(--color-primary)',
+      'var(--color-secondary)',
+      'var(--color-accent)',
+      'var(--color-success)',
+      'var(--color-warning)'
+    ];
+    return colors[index % colors.length];
+  };
 
   if (loading) {
     return (
       <div className="results-container">
-        <Header user={user} userRole={userRole} />
+        <SEO
+          title="Загрузка результатов"
+          description="Пожалуйста, подождите..."
+          noIndex={true}
+        />
+        <Header user={user} />
         <div className="loading-state">
           <i className="fas fa-spinner fa-spin"></i>
           <p>Загрузка результатов...</p>
@@ -115,14 +144,19 @@ const Results = ({ user, userRole }: ResultsProps) => {
     );
   }
 
-  if (error) {
+  if (error || !results) {
     return (
       <div className="results-container">
-        <Header user={user} userRole={userRole} />
+        <SEO
+          title="Ошибка"
+          description="Не удалось загрузить результаты"
+          noIndex={true}
+        />
+        <Header user={user} />
         <div className="error-state">
           <i className="fas fa-exclamation-triangle"></i>
-          <h3>Ошибка</h3>
-          <p>{error}</p>
+          <h3>{error || 'Результаты не найдены'}</h3>
+          <p>{!results ? 'Запрошенные результаты не существуют или были удалены.' : ''}</p>
           <Link to="/dashboard" className="back-btn">
             <i className="fas fa-arrow-left"></i>
             Назад к опросам
@@ -132,124 +166,132 @@ const Results = ({ user, userRole }: ResultsProps) => {
     );
   }
 
-  if (!poll || !results) {
-    return (
-      <div className="results-container">
-        <Header user={user} userRole={userRole} />
-        <div className="error-state">
-          <i className="fas fa-exclamation-triangle"></i>
-          <h3>Данные не найдены</h3>
-          <p>Не удалось загрузить результаты опроса.</p>
-          <Link to="/dashboard" className="back-btn">
-            <i className="fas fa-arrow-left"></i>
-            Назад к опросам
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const totalVotes = poll.total_votes || results.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+  const isAdmin = userRole === USER_ROLES.ADMIN;
 
   return (
     <div className="results-container">
-      <Header user={user} userRole={userRole} />
+      <SEO
+        title={`Результаты: ${results.title}`}
+        description={`Результаты голосования: ${results.description?.substring(0, 150)}...`}
+        canonical={`https://yoursite.com/results/${pollId}`}
+        ogImage={results.banner_url || '/og-default.png'}
+        ogType="article"
+      />
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Survey",
+          "name": results.title,
+          "description": results.description,
+          "endDate": results.end_date,
+          "publisher": {
+            "@type": "Organization",
+            "name": "Poll System"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingCount": results.total_votes,
+            "bestRating": 100,
+            "worstRating": 0
+          }
+        })}
+      </script>
+
+      <Header user={user} />
       
-      <div className="poll-info-card">
-        <div className="poll-header">
-          <h1 className="poll-title">{poll.title}</h1>
-          <div className="anonymity-badge">
-            <i className="fas fa-user-secret"></i>
-            Анонимное голосование
-          </div>
-        </div>
-        <p className="poll-description">{poll.description}</p>
-        <div className="poll-meta">
-          <div className="poll-meta-item">
-            <i className="fas fa-clock"></i>
-            <span>Завершается: {formatDate(poll.end_date)}</span>
-          </div>
-          <div className="poll-meta-item">
-            <i className="fas fa-users"></i>
-            <span>{totalVotes} голосов</span>
-          </div>
-          <div className="poll-meta-item">
-            <i className={`fas fa-${hasVoted ? 'check-circle' : 'eye'}`}></i>
-            <span>{hasVoted ? 'Вы проголосовали' : 'Только просмотр'}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="results-section">
-        <div className="results-header">
-          <h2 className="results-title">Результаты голосования</h2>
-          {AuthService.hasRole(USER_ROLES.ADMIN) && (
-            <div className="admin-actions">
-              <button className="admin-btn" title="Экспорт результатов">
-                <i className="fas fa-download"></i>
-              </button>
-              <button className="admin-btn" title="Управление опросом">
-                <i className="fas fa-cog"></i>
-              </button>
+      <main className="results-main" role="main">
+        <article className="results-article" aria-labelledby="results-title">
+          {results.banner_url && (
+            <div className="results-banner">
+              <img 
+                src={results.banner_url} 
+                alt={`Баннер опроса: ${results.title}`}
+                className="banner-image"
+                loading="lazy"
+              />
             </div>
           )}
-        </div>
 
-        <div className="results-items">
-          {results.options?.length > 0 ? (
-            results.options.map((option, index) => {
-              const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-              return (
-                <div key={option.id} className="result-item">
-                  <div className="result-header">
-                    <div className="result-option">
-                      <div className="result-option-number">{index + 1}</div>
-                      {option.text}
-                    </div>
-                    <div className="result-stats">
-                      {percentage}% ({option.votes || 0})
-                    </div>
-                  </div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="no-results">
-              <i className="fas fa-chart-bar"></i>
-              <p>Нет данных для отображения</p>
+          <h1 id="results-title" className="results-title">{results.title}</h1>
+          
+          <p className="results-description">{results.description}</p>
+
+          <div className="results-meta">
+            <div className="meta-item">
+              <i className="fas fa-users"></i>
+              <span><strong>{results.total_votes}</strong> голосов</span>
             </div>
-          )}
-        </div>
-
-        {hasVoted && (
-          <div className="success-notice">
-            <div className="success-icon"><i className="fas fa-check-circle"></i></div>
-            <h3 className="success-title">Ваш голос учтен!</h3>
-            <p className="success-text">
-              Благодарим за участие в голосовании. {totalVotes > 0 ? 'Результаты обновлены в реальном времени.' : 'Будьте первым, кто проголосует!'}
-            </p>
+            <div className="meta-item">
+              <i className="fas fa-clock"></i>
+              <span>{results.has_ended ? 'Завершен' : `До ${formatDate(results.end_date)}`}</span>
+            </div>
+            {isAdmin && (
+              <div className="meta-item admin-badge">
+                <i className="fas fa-shield-alt"></i>
+                <span>Администратор</span>
+              </div>
+            )}
           </div>
-        )}
-        
-        {!hasVoted && AuthService.hasRole(USER_ROLES.USER) && (
-          <div className="info-notice">
-            <i className="fas fa-info-circle"></i>
-            <p>Вы ещё не проголосовали в этом опросе. 
-              {poll.end_date && new Date() > new Date(poll.end_date) 
-                ? ' Опрос завершён, результаты доступны для просмотра.' 
-                : ' Проголосуйте, чтобы увидеть детальные результаты.'}
-            </p>
-            {! (poll.end_date && new Date() > new Date(poll.end_date)) && (
-              <Link to={`/poll/${pollId}`} className="vote-link">
-                Перейти к голосованию →
+
+          <section className="results-section" aria-label="Результаты голосования">
+            <h2 className="section-title">Распределение голосов</h2>
+            
+            {results.options && results.options.length > 0 ? (
+              <div className="results-bars">
+                {results.options.map((option, index) => (
+                  <div key={option.id} className="result-bar-container">
+                    <div className="result-bar-label">
+                      <span className="option-text">{option.text}</span>
+                      <span className="option-stats">
+                        {option.votes} голосов ({option.percentage}%)
+                      </span>
+                    </div>
+                    <div className="result-bar-wrapper">
+                      <div 
+                        className="result-bar"
+                        style={{ 
+                          width: getBarWidth(option.percentage || 0),
+                          backgroundColor: getBarColor(index)
+                        }}
+                        role="progressbar"
+                        aria-valuenow={option.percentage}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${option.text}: ${option.percentage}%`}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-results">
+                <i className="fas fa-chart-bar"></i>
+                <p>Голосов пока нет</p>
+              </div>
+            )}
+          </section>
+
+          <div className="results-actions">
+            <Link to="/dashboard" className="btn-secondary">
+              <i className="fas fa-arrow-left"></i>
+              К списку опросов
+            </Link>
+            
+            {results.has_ended ? (
+              <button className="btn-primary" disabled>
+                <i className="fas fa-lock"></i>
+                Голосование завершено
+              </button>
+            ) : (
+              <Link to={`/poll/${pollId}`} className="btn-primary">
+                <i className="fas fa-vote-yea"></i>
+                Проголосовать
               </Link>
             )}
           </div>
-        )}
-      </div>
+        </article>
+      </main>
     </div>
   );
 };
@@ -259,35 +301,38 @@ interface HeaderProps {
     name?: string;
     id?: string | number;
     faculty?: string;
+    student_id?: string;
   } | null;
-  userRole: string | null;
 }
 
-const Header = ({ user, userRole }: HeaderProps) => (
-  <header className="header">
-    <div className="header-content">
-      <Link to="/dashboard" className="back-btn">
-        <i className="fas fa-arrow-left"></i>
-        Назад к опросам
-      </Link>
-      <div className="user-info">
-        <div className="avatar">
-          {user?.name ? user.name.charAt(0).toUpperCase() : 'С'}
-        </div>
-        <div className="user-details">
-          <h2>
-            {user?.name || `Студент ${user?.id}`}
-            {userRole && (
-              <span className={`role-badge ${userRole}`}>
-                {userRole === USER_ROLES.ADMIN ? 'Админ' : 'Пользователь'}
-              </span>
-            )}
-          </h2>
-          <p>{user?.faculty || 'Факультет информатики'}</p>
+const Header = ({ user }: HeaderProps) => {
+  const displayName = user?.name 
+    ? user.name 
+    : user?.student_id 
+      ? `Студент ${user.student_id}` 
+      : user?.id 
+        ? `Студент ${user.id}` 
+        : 'Студент';
+  
+  return (
+    <header className="header">
+      <div className="header-content">
+        <Link to="/dashboard" className="back-btn">
+          <i className="fas fa-arrow-left"></i>
+          Назад к опросам
+        </Link>
+        <div className="user-info">
+          <div className="avatar">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <div className="user-details">
+            <h2>{displayName}</h2>
+            <p>{user?.faculty || 'Факультет информатики'}</p>
+          </div>
         </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 export default Results;

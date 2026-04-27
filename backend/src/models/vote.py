@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from src.database.connection import Base
@@ -13,9 +13,17 @@ class Vote(Base):
     
     student_id = Column(String, ForeignKey("users.student_id", ondelete="CASCADE"), nullable=False)
     
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    ip_address = Column(String(45), nullable=True)
+    
+    poll = relationship("Poll", back_populates="votes")
+    option = relationship("Option", back_populates="votes_entries")
     
     user = relationship("User", back_populates="votes")
+
+    __table_args__ = (
+        UniqueConstraint('poll_id', 'student_id', name='uq_vote_poll_student'),
+    )
 
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
@@ -30,6 +38,6 @@ class VoteCreate(VoteBase):
 
 class VoteResponse(VoteBase):
     id: int
-    timestamp: datetime
+    created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

@@ -9,12 +9,24 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthService, USER_ROLES } from './services/AuthService';
 import { DataService } from './services/DataService';
 import './App.css';
+import { lazy, Suspense } from 'react';
+
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const Dashboard = lazy(() => import('./components/Dashboard'));
+  const Poll = lazy(() => import('./components/Poll'));
+  const Results = lazy(() => import('./components/Results'));
+  const LoadingFallback = () => (
+    <div className="loading-fallback">
+      <div className="spinner"></div>
+      <p>Загрузка...</p>
+    </div>
+  );
 
   useEffect(() => { 
     initializeAuth(); 
@@ -132,13 +144,15 @@ function App() {
           <Route 
             path="/dashboard" 
             element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
-                <Dashboard 
-                  user={user}
-                  userRole={userRole}
-                  onLogout={handleLogout} 
-                />
-              </ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
+                  <Dashboard 
+                    user={user}
+                    userRole={userRole}
+                    onLogout={handleLogout} 
+                  />
+                </ProtectedRoute>
+              </Suspense>
             } 
           />
           <Route 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DataService } from '../services/DataService';
+import { AuthService, USER_ROLES } from '../services/AuthService';
+import SEO from './SEO';
 import './Poll.css';
 
 interface Option {
@@ -16,6 +18,8 @@ interface Poll {
   end_date: string;
   total_votes: number;
   options?: Option[];
+  banner_url?: string | null;
+  created_at?: string;
 }
 
 interface PollProps {
@@ -23,13 +27,15 @@ interface PollProps {
     name?: string;
     id?: string | number;
     faculty?: string;
+    student_id?: string;
   } | null;
   userRole: string | null;
 }
 
-const Poll = ({ user }: PollProps) => {
+const Poll = ({ user, userRole }: PollProps) => {
   const { pollId } = useParams<{ pollId: string }>();
   const navigate = useNavigate();
+  
   const [poll, setPoll] = useState<Poll | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +43,21 @@ const Poll = ({ user }: PollProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🔍 Poll: Props received:', {
+      userName: user?.name,
+      userRole: userRole,
+      pollId: pollId
+    });
+  }, [user, userRole, pollId]);
+
+
+  useEffect(() => {
+    if (!pollId) {
+      setError('ID опроса не указан');
+      setLoading(false);
+      return;
+    }
+    
     loadPollData();
     checkIfVoted();
   }, [pollId]);
@@ -44,15 +65,27 @@ const Poll = ({ user }: PollProps) => {
   const loadPollData = async () => {
     try {
       setLoading(true);
-      const pollData = await DataService.getPollById(Number(pollId));
+      setError(null);
+
+      const id = Number(pollId);
+      
+      if (!id || isNaN(id)) {
+        setError('Неверный ID опроса');
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 Poll: Loading poll', id);
+      const pollData = await DataService.getPollById(id);
+      
       if (pollData) {
         setPoll(pollData);
       } else {
         setError('Опрос не найден');
       }
-    } catch (err) {
-      console.error('Error loading poll:', err);
-      setError('Ошибка при загрузке опроса');
+    } catch (err: any) {
+      console.error('❌ Poll: Load error:', err);
+      setError(err.message || 'Ошибка при загрузке опроса');
     } finally {
       setLoading(false);
     }
@@ -60,9 +93,20 @@ const Poll = ({ user }: PollProps) => {
 
   const checkIfVoted = async () => {
     try {
-      const voteCheck = await DataService.checkVote(Number(pollId));
+      if (!pollId) return;
+      
+      const id = Number(pollId);
+      if (!id || isNaN(id)) return;
+
+      const hasVotedLocally = DataService.hasVotedLocally(id);
+      if (hasVotedLocally) {
+        navigate(`/results/${pollId}`, { replace: true });
+        return;
+      }
+
+      const voteCheck = await DataService.checkVote(id);
       if (voteCheck.has_voted) {
-        navigate(`/results/${pollId}`);
+        navigate(`/results/${pollId}`, { replace: true });
       }
     } catch (err) {
       console.warn('Could not check vote status:', err);
@@ -71,28 +115,51 @@ const Poll = ({ user }: PollProps) => {
 
   const handleVote = async () => {
     if (!selectedOption) {
-      alert('Пожалуйста, выберите вариант ответа');
+      setError('Пожалуйста, выберите вариант ответа');
+      return;
+    }
+
+    if (!pollId) {
+      setError('ID опроса не указан');
       return;
     }
 
     try {
       setVoting(true);
-      const result = await DataService.vote(Number(pollId), selectedOption);
+      setError(null);
+
+      const id = Number(pollId);
+      if (!id || isNaN(id)) {
+        setError('Неверный ID опроса');
+        return;
+      }
+
+      console.log('🔍 Poll: Submitting vote:', {
+        pollId: id,
+        optionId: selectedOption
+      });
+
+      const result = await DataService.vote(id, selectedOption);
+      
+      console.log('🔍 Poll: Vote result:', result);
       
       if (result.success) {
-        navigate(`/results/${pollId}`);
+        navigate(`/results/${pollId}`, { replace: true });
       } else {
-        throw new Error('Ошибка при голосовании');
+        throw new Error(result.error || 'Ошибка при голосовании');
       }
-    } catch (err) {
-      console.error('Error voting:', err);
-      alert('Ошибка при отправке голоса. Попробуйте еще раз.');
+    } catch (err: any) {
+      console.error('Poll: Vote error:', err);
+      setError(err.message || 'Ошибка при отправке голоса. Попробуйте еще раз.');
     } finally {
       setVoting(false);
     }
   };
 
+
   const formatDate = (dateString: string): string => {
+    if (!dateString) return 'Дата не указана';
+    
     const options: Intl.DateTimeFormatOptions = { 
       year: 'numeric', 
       month: 'long', 
@@ -103,9 +170,19 @@ const Poll = ({ user }: PollProps) => {
     return new Date(dateString).toLocaleDateString('ru-RU', options);
   };
 
+  const isPollExpired = (endDate: string): boolean => {
+    if (!endDate) return false;
+    return new Date() > new Date(endDate);
+  };
+
   if (loading) {
     return (
       <div className="poll-container">
+        <SEO
+          title="Загрузка опроса"
+          description="Пожалуйста, подождите..."
+          noIndex={true}
+        />
         <Header user={user} />
         <div className="loading-state">
           <i className="fas fa-spinner fa-spin"></i>
@@ -115,14 +192,19 @@ const Poll = ({ user }: PollProps) => {
     );
   }
 
-  if (error) {
+  if (error || !poll) {
     return (
       <div className="poll-container">
+        <SEO
+          title="Ошибка"
+          description="Не удалось загрузить опрос"
+          noIndex={true}
+        />
         <Header user={user} />
         <div className="error-state">
           <i className="fas fa-exclamation-triangle"></i>
-          <h3>Ошибка</h3>
-          <p>{error}</p>
+          <h3>{error || 'Опрос не найден'}</h3>
+          <p>{!poll ? 'Запрошенный опрос не существует или был удален.' : ''}</p>
           <Link to="/dashboard" className="back-btn">
             <i className="fas fa-arrow-left"></i>
             Назад к опросам
@@ -132,25 +214,34 @@ const Poll = ({ user }: PollProps) => {
     );
   }
 
-  if (!poll) {
-    return (
-      <div className="poll-container">
-        <Header user={user} />
-        <div className="error-state">
-          <i className="fas fa-exclamation-triangle"></i>
-          <h3>Опрос не найден</h3>
-          <p>Запрошенный опрос не существует или был удален.</p>
-          <Link to="/dashboard" className="back-btn">
-            <i className="fas fa-arrow-left"></i>
-            Назад к опросам
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const expired = isPollExpired(poll.end_date);
 
   return (
     <div className="poll-container">
+
+      <SEO
+        title={poll.title}
+        description={poll.description}
+        canonical={`https://index_poll.com/poll/${pollId}`}
+        ogImage={poll.banner_url || '/og-default.png'}
+        ogType="article"
+      />
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Survey",
+          "name": poll?.title,
+          "description": poll?.description,
+          "startDate": poll?.created_at,
+          "endDate": poll?.end_date,
+          "publisher": {
+            "@type": "Organization",
+            "name": "Poll System"
+          }
+        })}
+      </script>
+
       <Header user={user} />
       
       <div className="poll-info-card">
@@ -165,7 +256,7 @@ const Poll = ({ user }: PollProps) => {
         <div className="poll-meta">
           <div className="poll-meta-item">
             <i className="fas fa-clock"></i>
-            <span>Завершается: {formatDate(poll.end_date)}</span>
+            <span>{expired ? 'Завершен' : `Завершается: ${formatDate(poll.end_date)}`}</span>
           </div>
           <div className="poll-meta-item">
             <i className="fas fa-users"></i>
@@ -181,30 +272,51 @@ const Poll = ({ user }: PollProps) => {
         </div>
         
         <div className="option-cards">
-          {poll.options?.map((option, index) => (
-            <div
-              key={option.id}
-              className={`option-card ${selectedOption === option.id ? 'selected' : ''}`}
-              onClick={() => setSelectedOption(option.id)}
-            >
-              <div className="option-content">
-                <div className="option-number">{index + 1}</div>
-                <div className="option-text">{option.text}</div>
+          {poll.options && poll.options.length > 0 ? (
+            poll.options.map((option, index) => (
+              <div
+                key={option.id}
+                className={`option-card ${selectedOption === option.id ? 'selected' : ''}`}
+                onClick={() => setSelectedOption(option.id)}
+                role="radio"
+                aria-checked={selectedOption === option.id}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedOption(option.id);
+                  }
+                }}
+              >
+                <div className="option-content">
+                  <div className="option-number">{index + 1}</div>
+                  <div className="option-text">{option.text}</div>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="no-options">
+              <i className="fas fa-inbox"></i>
+              <p>Варианты ответов отсутствуют</p>
             </div>
-          ))}
+          )}
         </div>
         
         <div className="vote-button-section">
           <button 
             className={`vote-btn ${selectedOption ? 'active' : ''}`}
             onClick={handleVote}
-            disabled={!selectedOption || voting}
+            disabled={!selectedOption || voting || expired}
+            aria-label="Проголосовать"
           >
             {voting ? (
               <>
                 <i className="fas fa-spinner fa-spin"></i>
                 Отправка...
+              </>
+            ) : expired ? (
+              <>
+                <i className="fas fa-lock"></i>
+                Опрос завершен
               </>
             ) : (
               <>
@@ -214,6 +326,13 @@ const Poll = ({ user }: PollProps) => {
             )}
           </button>
         </div>
+
+        {error && (
+          <div className="error-message" role="alert">
+            <i className="fas fa-exclamation-circle"></i>
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -224,27 +343,38 @@ interface HeaderProps {
     name?: string;
     id?: string | number;
     faculty?: string;
+    student_id?: string;
   } | null;
 }
 
-const Header = ({ user }: HeaderProps) => (
-  <header className="header">
-    <div className="header-content">
-      <Link to="/dashboard" className="back-btn">
-        <i className="fas fa-arrow-left"></i>
-        Назад к опросам
-      </Link>
-      <div className="user-info">
-        <div className="avatar">
-          {user?.name ? user.name.charAt(0).toUpperCase() : 'С'}
-        </div>
-        <div className="user-details">
-          <h2>{user?.name || `Студент ${user?.id}`}</h2>
-          <p>{user?.faculty || 'Факультет информатики'}</p>
+const Header = ({ user }: HeaderProps) => {
+  const displayName = user?.name 
+    ? user.name 
+    : user?.student_id 
+      ? `Студент ${user.student_id}` 
+      : user?.id 
+        ? `Студент ${user.id}` 
+        : 'Студент';
+  
+  return (
+    <header className="header">
+      <div className="header-content">
+        <Link to="/dashboard" className="back-btn">
+          <i className="fas fa-arrow-left"></i>
+          Назад к опросам
+        </Link>
+        <div className="user-info">
+          <div className="avatar">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <div className="user-details">
+            <h2>{displayName}</h2>
+            <p>{user?.faculty || 'Факультет информатики'}</p>
+          </div>
         </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 export default Poll;

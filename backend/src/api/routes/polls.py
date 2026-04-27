@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from src.services.file_service import FileService
+from src.exceptions import ResourceGoneException
 
 from src.database.connection import get_db
 from src.models.poll import Poll, Option
@@ -21,6 +22,11 @@ from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
 
 router = APIRouter()
 
+def _base_poll_query():
+    """Базовый запрос, исключающий мягко удалённые опросы"""
+    return select(Poll).where(Poll.is_deleted == False)
+
+
 @router.get("/")
 async def get_polls(
     db: DatabaseDep,
@@ -31,8 +37,7 @@ async def get_polls(
     Получить список опросов с фильтрацией, поиском, сортировкой и пагинацией
     """
     try:
-        query = select(Poll).options(
-        )
+        query = _base_poll_query()
         
         if params.status == "active":
             query = query.where(Poll.end_date > datetime.utcnow())
@@ -114,7 +119,7 @@ async def get_polls(
             detail=f"Ошибка при получении опросов: {str(e)}"
         )
 
-# ========== CREATE POLL ==========
+
 @router.post("/", response_model=PollResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_poll(
     poll_data: PollCreate,
@@ -132,7 +137,12 @@ async def create_new_poll(
         if poll_data.end_date <= datetime.utcnow():
             raise HTTPException(400, "Дата окончания должна быть в будущем")
         
-        exists = await db.execute(select(Poll).where(Poll.title == poll_data.title))
+        exists = await db.execute(
+            select(Poll).where(
+                Poll.title == poll_data.title,
+                Poll.is_deleted == False
+            )
+        )
         if exists.scalar_one_or_none():
             raise HTTPException(409, "Опрос с таким названием уже существует")
         
@@ -140,7 +150,8 @@ async def create_new_poll(
             title=poll_data.title,
             description=poll_data.description,
             end_date=poll_data.end_date,
-            total_votes=0
+            total_votes=0,
+            is_deleted=False
         )
         db.add(poll)
         await db.flush()
@@ -182,7 +193,6 @@ async def create_new_poll(
         raise HTTPException(500, f"Ошибка при создании опроса: {str(e)}")
     
 
-
 @router.get("/{poll_id}", response_model=PollResponse)
 async def get_poll(
     poll_id: int,
@@ -194,15 +204,24 @@ async def get_poll(
     """
     try:
         result = await db.execute(
-            select(Poll).where(Poll.id == poll_id)
+            select(Poll).where(
+                Poll.id == poll_id,
+                Poll.is_deleted == False
+            )
         )
         poll = result.scalar_one_or_none()
         
         if not poll:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Опрос не найден"
+            check_deleted = await db.execute(
+                select(Poll).where(Poll.id == poll_id)
             )
+            if check_deleted.scalar_one_or_none():
+                raise ResourceGoneException("Этот опрос был удалён")
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Опрос не найден"
+                )
         
         options_result = await db.execute(
             select(Option).where(Option.poll_id == poll_id)
@@ -231,7 +250,7 @@ async def get_poll(
             ]
         )
         
-    except HTTPException:
+    except (HTTPException, ResourceGoneException):
         raise
     except Exception as e:
         print(f"Error getting poll {poll_id}: {str(e)}")
@@ -239,7 +258,6 @@ async def get_poll(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении опроса: {str(e)}"
         )
-    
 
 @router.get("/{poll_id}/results", response_model=PollResultsResponse)
 async def get_poll_results(
@@ -252,15 +270,24 @@ async def get_poll_results(
     """
     try:
         poll_result = await db.execute(
-            select(Poll).where(Poll.id == poll_id)
+            select(Poll).where(
+                Poll.id == poll_id,
+                Poll.is_deleted == False
+            )
         )
         poll = poll_result.scalar_one_or_none()
         
         if not poll:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Опрос не найден"
+            check_deleted = await db.execute(
+                select(Poll).where(Poll.id == poll_id)
             )
+            if check_deleted.scalar_one_or_none():
+                raise ResourceGoneException("Этот опрос был удалён")
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Опрос не найден"
+                )
         
         options_result = await db.execute(
             select(Option).where(Option.poll_id == poll_id).order_by(Option.votes.desc())
@@ -291,7 +318,7 @@ async def get_poll_results(
             has_ended=poll.end_date < datetime.utcnow() if poll.end_date else False
         )
         
-    except HTTPException:
+    except (HTTPException, ResourceGoneException):
         raise
     except Exception as e:
         print(f"Error getting poll results {poll_id}: {str(e)}")
@@ -299,7 +326,6 @@ async def get_poll_results(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении результатов: {str(e)}"
         )
-    
 
 @router.put("/{poll_id}", response_model=PollResponse)
 async def update_poll(
@@ -309,8 +335,19 @@ async def update_poll(
     admin_id: CurrentAdmin
 ):
     """Обновление опроса (только админ)"""
-    poll = await db.get(Poll, poll_id)
+    
+    poll = await db.execute(
+        select(Poll).where(
+            Poll.id == poll_id,
+            Poll.is_deleted == False
+        )
+    )
+    poll = poll.scalar_one_or_none()
+    
     if not poll:
+        check = await db.get(Poll, poll_id)
+        if check and check.is_deleted:
+            raise ResourceGoneException("Нельзя обновить удалённый опрос")
         raise HTTPException(status_code=404, detail="Опрос не найден")
     
     update_data = poll_data.model_dump(exclude_unset=True)
@@ -320,8 +357,6 @@ async def update_poll(
     await db.commit()
     await db.refresh(poll)
     return PollResponse.model_validate(poll)
-
-
 
 @router.get("/active")
 async def get_active_polls(
@@ -335,7 +370,10 @@ async def get_active_polls(
         
         result = await db.execute(
             select(Poll)
-            .where(Poll.end_date > current_time)
+            .where(
+                Poll.end_date > current_time,
+                Poll.is_deleted == False
+            )
             .order_by(Poll.created_at.desc())
         )
         polls = result.scalars().all()
@@ -374,27 +412,44 @@ async def get_active_polls(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении активных опросов: {str(e)}"
         )
-    
+
 @router.delete("/{poll_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_poll(
     poll_id: int,
     db: DatabaseDep,
     admin_id: CurrentAdmin
 ):
-    """Удаление опроса (только админ)"""
+    """
+    Мягкое удаление опроса (только админ)
+    Опрос помечается как удалённый, но не стирается из БД.
+    Возвращает 410 Gone при попытке доступа.
+    """
+    
     poll = await db.get(Poll, poll_id)
+    
     if not poll:
         raise HTTPException(status_code=404, detail="Опрос не найден")
     
-    votes_count = await db.execute(
-        select(func.count()).select_from(Vote).where(Vote.poll_id == poll_id)
-    )
-    if votes_count.scalar() > 0:
-        raise HTTPException(status_code=409, detail="Нельзя удалить опрос с голосами")
+    if poll.is_deleted:
+        return Response(status_code=204) 
     
-    await db.delete(poll)
+    # защита от удаления опросов с голосами
+    # votes_count = await db.execute(
+    #     select(func.count()).select_from(Vote).where(Vote.poll_id == poll_id)
+    # )
+    # if votes_count.scalar() > 0:
+        
+    #     raise HTTPException(
+    #         status_code=409, 
+    #         detail="Нельзя удалить опрос с голосами. Сначала удалите голоса или используйте архивацию."
+    #     )
+    
+    poll.is_deleted = True
+    poll.deleted_at = datetime.now(timezone.utc)
+    
     await db.commit()
-    return None
+    
+    return Response(status_code=204)
 
 @router.put("/{poll_id}/banner")
 async def update_poll_banner(
@@ -415,8 +470,18 @@ async def update_poll_banner(
         if not file_meta:
             raise HTTPException(404, detail=f"Файл {banner_file_id} не найден")
         
-        poll = await db.get(Poll, poll_id)
+        poll = await db.execute(
+            select(Poll).where(
+                Poll.id == poll_id,
+                Poll.is_deleted == False
+            )
+        )
+        poll = poll.scalar_one_or_none()
+        
         if not poll:
+            check = await db.get(Poll, poll_id)
+            if check and check.is_deleted:
+                raise ResourceGoneException("Нельзя изменить баннер удалённого опроса")
             raise HTTPException(404, detail=f"Опрос {poll_id} не найден")
         
         print(f"🔗 Привязываем файл {banner_file_id} к опросу {poll_id}")
@@ -430,9 +495,9 @@ async def update_poll_banner(
             "banner_file_id": banner_file_id
         }
         
-    except HTTPException:
+    except (HTTPException, ResourceGoneException):
         raise
     except Exception as e:
         await db.rollback()
-        print(f"❌ Ошибка привязки баннера: {e}")
+        print(f"Ошибка привязки баннера: {e}")
         raise HTTPException(500, detail=f"Ошибка: {str(e)}")

@@ -388,3 +388,65 @@
     justify-content: center;
   }
 }
+
+.polls-section {
+  padding: 1rem 0;
+}
+
+.polls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.poll-card {
+  background: var(--color-card-bg);
+  border-radius: var(--border-radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.poll-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.poll-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--color-text-primary);
+}
+
+.poll-banner {
+  position: relative;
+  padding-bottom: 50%;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+}
+
+.banner-image {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.poll-card:hover .banner-image {
+  transform: scale(1.02);
+}
+
+.poll-card:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.poll-card [aria-hidden="true"] {
+  pointer-events: none;
+}

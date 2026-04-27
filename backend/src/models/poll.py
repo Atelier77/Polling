@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from src.database.connection import Base
@@ -15,8 +15,12 @@ class Poll(Base):
 
     banner_file_id = Column(Integer, ForeignKey('files.id'), nullable=True)
     banner = relationship("FileMetadata", foreign_keys=[banner_file_id], lazy="select")
+
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     
     options = relationship("Option", back_populates="poll", cascade="all, delete-orphan")
+    votes = relationship("Vote", back_populates="poll")
 
 class Option(Base):
     __tablename__ = "options"
@@ -27,6 +31,7 @@ class Option(Base):
     votes = Column(Integer, default=0)
     
     poll = relationship("Poll", back_populates="options")
+    votes_entries = relationship("Vote", back_populates="option")
 
 from pydantic import BaseModel, ConfigDict
 from typing import List

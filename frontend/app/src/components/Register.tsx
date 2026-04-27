@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
+import { SEO } from './SEO';
 import './Login.css';
 
 const Register = () => {
@@ -20,7 +21,6 @@ const Register = () => {
     e.preventDefault();
     setError('');
     
-    // Валидация
     if (!formData.studentId.trim()) {
       setError('Введите номер студенческого');
       return;
@@ -83,6 +83,12 @@ const Register = () => {
 
   return (
     <div className="login-container">
+        <SEO
+        title="Регистрация"
+        description="Создайте аккаунт для участия в опросах"
+        noIndex={true}
+        //canonical="https://yoursite.com/register"
+      />
       <div className="login-box">
         <h2>Регистрация</h2>
         <p className="login-subtitle">Создайте аккаунт для участия в опросах</p>

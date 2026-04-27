@@ -1,5 +1,3 @@
-// frontend/src/components/Dashboard.tsx
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DataService } from '../services/DataService';
@@ -8,6 +6,7 @@ import CreatePollModal from './CreatePollModal';
 import { PollBannerUpload } from './PollBannerUpload';
 import { PollFilters, FilterState } from './PollFilters';
 import { Pagination } from './Pagination';
+import { SEO } from './SEO';
 import './Dashboard.css';
 
 export interface Poll {
@@ -48,9 +47,8 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // 🔹 ОТЛАДКА: проверяем пропсы при каждом рендере
   useEffect(() => {
-    console.log('🔍 Dashboard: Props received:', {
+    console.log('Dashboard: Props received:', {
       userName: user?.name,
       userStudentId: user?.student_id,
       userRole: userRole,
@@ -78,14 +76,8 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
   const [currentPollTitle, setCurrentPollTitle] = useState<string>('');
   const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(null);
 
-  // 🔹 Надёжная проверка админа (с приведением к lowercase)
   const isAdmin = (userRole?.toLowerCase() === USER_ROLES.ADMIN) || adminView;
 
-  // =============================================================================
-  // 🔹 Синхронизация фильтров с URL (ОДИН useEffect, без цикла!)
-  // =============================================================================
-  
-  // 1. Чтение фильтров из URL при первой загрузке / изменении параметров
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const loadedFilters: Partial<FilterState> = {};
@@ -98,10 +90,9 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
     if (params.get('limit')) loadedFilters.limit = parseInt(params.get('limit')!, 10);
     if (params.get('faculty')) loadedFilters.faculty = params.get('faculty')!;
     
-    // Обновляем состояние только если есть новые параметры
     if (Object.keys(loadedFilters).length > 0) {
       setFilters(prev => {
-        // Избегаем бесконечного цикла: обновляем только если значения отличаются
+
         const newFilters = { ...prev, ...loadedFilters };
         const isDifferent = JSON.stringify(prev) !== JSON.stringify(newFilters);
         return isDifferent ? newFilters : prev;
@@ -109,7 +100,6 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
     }
   }, [location.search]);
 
-  // 2. Обновление URL при изменении фильтров (с debounce-подобной защитой)
   useEffect(() => {
     const params = new URLSearchParams();
     
@@ -121,26 +111,20 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
     if (filters.limit !== 10) params.set('limit', filters.limit.toString());
     if (filters.faculty) params.set('faculty', filters.faculty);
     
-    // 🔹 Навигация с replace (не создаёт новую запись в истории)
     const queryString = params.toString();
     const currentQuery = location.search;
     
-    // Обновляем URL только если строка запроса действительно изменилась
     if (queryString !== currentQuery) {
       navigate(`?${queryString}`, { replace: true });
     }
   }, [filters, navigate, location.search]);
-
-  // =============================================================================
-  // 🔹 Загрузка данных
-  // =============================================================================
   
   useEffect(() => {
     loadPolls();
   }, [filters]);
 
   const loadPolls = async () => {
-    console.log('🔍 loadPolls: STARTED');
+    console.log('loadPolls: STARTED');
     
     try {
       setLoading(true);
@@ -156,11 +140,11 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
       params.append('limit', filters.limit.toString());
 
       const queryString = params.toString();
-      console.log('🔍 loadPolls: Fetching /api/polls/?' + queryString);
+      console.log('loadPolls: Fetching /api/polls/?' + queryString);
       
       const data = await DataService.getPolls(queryString);
       
-      console.log('🔍 loadPolls: Response received:', data);
+      console.log('loadPolls: Response received:', data);
       
       if (Array.isArray(data)) {
         setPolls(data);
@@ -176,20 +160,16 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
         setPagination({ total: 0, pages: 0 });
       }
       
-      console.log('🔍 loadPolls: COMPLETED');
+      console.log('loadPolls: COMPLETED');
       
     } catch (err) {
-      console.error('❌ loadPolls: ERROR:', err);
+      console.error('loadPolls: ERROR:', err);
       setError('Не удалось загрузить опросы. Проверьте подключение к серверу.');
     } finally {
       setLoading(false);
-      console.log('🔍 loadPolls: finally block executed, loading=false');
+      console.log('loadPolls: finally block executed, loading=false');
     }
   };
-
-  // =============================================================================
-  // 🔹 Обработчики событий
-  // =============================================================================
 
   const handlePollClick = (pollId: number) => {
     const hasVoted = DataService.hasVotedLocally(pollId);
@@ -294,7 +274,6 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
   };
 
   const handleFiltersChange = (newFilters: FilterState) => {
-    // 🔹 Просто обновляем состояние — useEffect сам обновит URL
     setFilters(newFilters);
   };
 
@@ -302,11 +281,6 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
     setFilters(prev => ({ ...prev, page }));
   };
 
-  // =============================================================================
-  // 🔹 Рендеринг
-  // =============================================================================
-
-  // 🔹 Показываем заглушку, если user ещё не загрузился
   if (!user && loading) {
     return (
       <div className="dashboard-container">
@@ -330,44 +304,54 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
     );
   }
 
-  return (
-    <div className="dashboard-container">
-      <Header user={user} userRole={userRole} onLogout={onLogout} />
-      
-      <main className="dashboard-main">
-        <div className="dashboard-header">
-          <div>
-            <h1>Доступные опросы</h1>
-            <p>Выберите опрос для участия или просмотра результатов. Все голоса полностью анонимны.</p>
-          </div>
-          
-          {isAdmin && (
-            <button 
-              className="create-poll-btn"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <i className="fas fa-plus"></i>
-              Создать опрос
-            </button>
-          )}
+return (
+  <div className="dashboard-container">
+    <SEO
+      title="Доступные опросы"
+      description="Участвуйте в анонимных опросах и голосуйте за важные решения"
+      canonical={window.location.href}
+      ogImage="/og-dashboard.png"
+    />
+    
+    <Header user={user} userRole={userRole} onLogout={onLogout} />
+    
+    <main className="dashboard-main" role="main">
+      <header className="dashboard-header">
+        <div>
+          <h1>Доступные опросы</h1>
+          <p>Выберите опрос для участия или просмотра результатов. Все голоса полностью анонимны.</p>
         </div>
+        
+        {isAdmin && (
+          <button 
+            className="create-poll-btn"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <i className="fas fa-plus"></i>
+            Создать опрос
+          </button>
+        )}
+      </header>
 
+      <section className="filters-section" aria-label="Фильтры опросов">
         <PollFilters 
           initialFilters={filters}
           onFiltersChange={handleFiltersChange}
         />
+      </section>
 
-        {error && (
-          <div className="error-alert">
-            <i className="fas fa-exclamation-circle"></i>
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="error-alert" role="alert">
+          <i className="fas fa-exclamation-circle"></i>
+          {error}
+        </div>
+      )}
 
+      <section className="polls-section" aria-label="Список опросов">
         {polls.length === 0 && !loading ? (
-          <div className="empty-state">
-            <i className="fas fa-inbox"></i>
-            <h3>Нет доступных опросов</h3>
+          <article className="empty-state" aria-labelledby="empty-title">
+            <i className="fas fa-inbox" aria-hidden="true"></i>
+            <h2 id="empty-title">Нет доступных опросов</h2>
             <p>В данный момент нет активных опросов для голосования.</p>
             {isAdmin && (
               <button 
@@ -378,110 +362,121 @@ const Dashboard = ({ user, userRole, onLogout, adminView }: DashboardProps) => {
                 Создать первый опрос
               </button>
             )}
-          </div>
+          </article>
         ) : (
-          <>
-            <div className="polls-grid">
-              {polls.map(poll => {
-                const hasVoted = DataService.hasVotedLocally(poll.id);
-                const isExpired = isPollExpired(poll.end_date);
-                
-                return (
-                  <div 
-                    key={poll.id} 
-                    className="poll-card"
-                    onClick={() => handlePollClick(poll.id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {poll.banner_url && (
-                      <div className="poll-banner">
-                        <img 
-                          src={poll.banner_url} 
-                          alt={poll.title}
-                          className="banner-image"
-                          onError={(e) => (e.currentTarget.style.display = 'none')}
-                        />
-                      </div>
-                    )}
-                    
-                    <div className="poll-header">
-                      <h3 className="poll-title">{poll.title}</h3>
-                      <div className={`poll-status ${isExpired ? 'expired' : 'active'}`}>
-                        {isExpired ? 'Завершен' : 'Активен'}
-                      </div>
-                    </div>
-                    <p className="poll-description">{poll.description}</p>
-                    <div className="poll-meta">
-                      <div className="poll-stats">
-                        <i className="fas fa-users"></i>
-                        <span>{poll.total_votes || 0} голосов</span>
-                      </div>
-                      <div className="poll-info">
-                        <div className="poll-info-item">
-                          <i className="fas fa-clock"></i>
-                          <span>{formatDate(poll.end_date)}</span>
-                        </div>
-                        <div className="poll-info-item">
-                          <i className="fas fa-user-secret"></i>
-                          <span>Анонимно</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="participate-section">
-                      <button 
-                        className={`participate-btn ${isExpired ? 'disabled' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePollClick(poll.id);
+          <div className="polls-grid" role="list">
+            {polls.map(poll => {
+              const hasVoted = DataService.hasVotedLocally(poll.id);
+              const isExpired = isPollExpired(poll.end_date);
+              
+              return (
+                <article 
+                  key={poll.id} 
+                  className="poll-card"
+                  aria-labelledby={`poll-title-${poll.id}`}
+                  role="listitem"
+                >
+                  {poll.banner_url && (
+                    <div className="poll-banner">
+                      <img 
+                        src={poll.banner_url} 
+                        alt={`Баннер опроса: ${poll.title}`} 
+                        className="banner-image"
+                        loading="lazy"
+                        decoding="async"
+                        width="400"
+                        height="200"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
                         }}
-                        disabled={isExpired}
-                      >
-                        <i className={`fas fa-${hasVoted ? 'chart-bar' : 'vote-yea'}`}></i>
-                        {isExpired ? 'Опрос завершен' : 
-                          hasVoted ? 'Посмотреть результаты' : 'Участвовать в опросе'}
-                      </button>
+                      />
+                    </div>
+                  )}
+                  
+                  <header className="poll-header">
+                    <h2 id={`poll-title-${poll.id}`} className="poll-title">
+                      {poll.title}
+                    </h2>
+                    <div className={`poll-status ${isExpired ? 'expired' : 'active'}`} aria-label={isExpired ? 'Опрос завершен' : 'Опрос активен'}>
+                      {isExpired ? 'Завершен' : 'Активен'}
+                    </div>
+                  </header>
+                  
+                  <p className="poll-description">{poll.description}</p>
+                  
+                  <div className="poll-meta">
+                    <div className="poll-stats">
+                      <i className="fas fa-users" aria-hidden="true"></i>
+                      <span>{poll.total_votes || 0} голосов</span>
+                    </div>
+                    <div className="poll-info">
+                      <div className="poll-info-item">
+                        <i className="fas fa-clock" aria-hidden="true"></i>
+                        <span>{formatDate(poll.end_date)}</span>
+                      </div>
+                      <div className="poll-info-item">
+                        <i className="fas fa-user-secret" aria-hidden="true"></i>
+                        <span>Анонимно</span>
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            <Pagination
-              currentPage={filters.page}
-              totalPages={pagination.pages}
-              onPageChange={handlePageChange}
-            />
-          </>
-        )}
-      </main>
-
-      <CreatePollModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={handleCreatePoll}
-        onPollCreated={handlePollCreated}
-      />
-
-      {showBannerModal && currentPollId && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowBannerModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <PollBannerUpload
-              pollId={currentPollId}
-              pollTitle={currentPollTitle}
-              currentBannerUrl={currentBannerUrl}
-              onBannerUploaded={handleBannerUploaded}
-              onBack={() => setShowBannerModal(false)}
-            />
+                  
+                  <div className="participate-section">
+                    <button 
+                      className={`participate-btn ${isExpired ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePollClick(poll.id);
+                      }}
+                      disabled={isExpired}
+                      aria-label={isExpired ? 'Опрос завершен' : hasVoted ? 'Посмотреть результаты' : 'Участвовать в опросе'}
+                    >
+                      <i className={`fas fa-${hasVoted ? 'chart-bar' : 'vote-yea'}`} aria-hidden="true"></i>
+                      {isExpired ? 'Опрос завершен' : 
+                        hasVoted ? 'Посмотреть результаты' : 'Участвовать в опросе'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        </div>
-      )}
-    </div>
-  );
-};
+        )}
+      </section>
 
-// =============================================================================
-// 🔹 Компонент шапки
-// =============================================================================
+      {pagination.pages > 1 && (
+        <nav className="pagination-nav" aria-label="Навигация по страницам">
+          <Pagination
+            currentPage={filters.page}
+            totalPages={pagination.pages}
+            onPageChange={handlePageChange}
+          />
+        </nav>
+      )}
+    </main>
+
+    <CreatePollModal
+      isOpen={showCreateModal}
+      onClose={() => setShowCreateModal(false)}
+      onCreate={handleCreatePoll}
+      onPollCreated={handlePollCreated}
+    />
+
+    {showBannerModal && currentPollId && (
+      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowBannerModal(false)}>
+        <div className="modal-content" style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <PollBannerUpload
+            pollId={currentPollId}
+            pollTitle={currentPollTitle}
+            currentBannerUrl={currentBannerUrl}
+            onBannerUploaded={handleBannerUploaded}
+            onBack={() => setShowBannerModal(false)}
+          />
+        </div>
+      </div>
+    )}
+  </div>
+);
+};
 
 interface HeaderProps {
   user: {
@@ -495,14 +490,12 @@ interface HeaderProps {
 }
 
 const Header = ({ user, userRole, onLogout }: HeaderProps) => {
-  // 🔹 Безопасное получение имени для отображения
   const displayName = user?.name 
     ? user.name 
     : user?.student_id 
       ? `Студент ${user.student_id}` 
       : 'Студент';
   
-  // 🔹 Безопасное определение роли для отображения
   const displayRole = userRole?.toLowerCase() === USER_ROLES.ADMIN ? 'Админ' : 'Пользователь';
   
   return (

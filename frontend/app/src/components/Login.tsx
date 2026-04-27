@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
+import { SEO } from './SEO';
 import './Login.css';
 
 interface LoginProps {
@@ -48,6 +49,11 @@ const Login = ({ onLogin }: LoginProps) => {
 
   return (
     <div className="login-container">
+      <SEO
+        title="Вход в систему"
+        description="Войдите для участия в опросах"
+        noIndex={true}
+      />
       <div className="login-box">
         <h2>Вход в систему</h2>
         <p className="login-subtitle">Введите ваши данные для входа</p>

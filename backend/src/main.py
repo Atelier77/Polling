@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import traceback
+import logging
+from src.exceptions import ResourceGoneException
 
-from src.api.routes import auth, polls, votes, files
+from src.api.routes import auth, polls, votes, files, seo
 from src.database.connection import create_tables
 from src.config import settings
 
@@ -14,6 +17,8 @@ from src.models.poll import Poll, Option
 from src.models.vote import Vote
 from src.models.token import RefreshToken
 from src.models.file  import FileMetadata
+
+logger = logging.getLogger("poll_system")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,18 +63,98 @@ async def response_validation_handler(request: Request, exc: ResponseValidationE
         }
     )
 
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """Глобальный обработчик исключений"""
-    print(f"Global exception: {exc}")
-    print(traceback.format_exc())
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Обработчик ошибок валидации Pydantic/FastAPI"""
+    
+    logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
+    
+    errors = []
+    for error in exc.errors():
+        loc = " → ".join(str(l) for l in error["loc"] if l != "body")
+        errors.append({
+            "field": loc or "body",
+            "message": error["msg"],
+            "type": error["type"]
+        })
     
     return JSONResponse(
-        status_code=500,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "success": False,
+            "error": "Ошибка валидации данных",
+            "details": errors
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Глобальный обработчик для НЕОЖИДАННЫХ исключений (серверные ошибки)"""
+    
+    logger.error(
+        f"Unhandled exception on {request.url.path}",
+        exc_info=True,
+        extra={
+            "method": request.method,
+            "url": str(request.url),
+            "client": request.client.host if request.client else "unknown",
+            "user_agent": request.headers.get("user-agent")
+        }
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "success": False,
             "error": "Внутренняя ошибка сервера",
-            "details": str(exc)
+        }
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Обработчик стандартных HTTP-ошибок (404, 403, 422, и т.д.)"""
+    
+    if exc.status_code >= 500:
+        logger.error(f"HTTP {exc.status_code} on {request.url.path}", exc_info=False)
+    elif exc.status_code >= 400:
+        logger.warning(f"HTTP {exc.status_code} on {request.url.path}: {exc.detail}")
+    
+    if exc.status_code == status.HTTP_404_NOT_FOUND:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "success": False,
+                "error": "Страница не найдена",
+                "path": str(request.url.path),
+                "suggestions": ["/dashboard", "/polls"]
+            },
+            headers={
+                "Cache-Control": "public, max-age=300"
+            }
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": exc.detail
+        }
+    )
+
+@app.exception_handler(ResourceGoneException)
+async def gone_exception_handler(request: Request, exc: ResourceGoneException):
+    """Обработчик для навсегда удалённых ресурсов (410 Gone)"""
+    
+    logger.info(f"Resource gone: {request.url.path}")
+    
+    return JSONResponse(
+        status_code=410,
+        content={
+            "success": False,
+            "error": "Ресурс был удалён",
+            "message": exc.detail
+        },
+        headers={
+            "Cache-Control": "public, max-age=86400"
         }
     )
 
@@ -93,6 +178,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(polls.router, prefix="/api/polls", tags=["Polls"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(files.router, prefix="/api/files", tags=["Files"])
+app.include_router(seo.router, prefix="/api/seo", tags=["SEO"])
 
 @app.get("/")
 async def root():
