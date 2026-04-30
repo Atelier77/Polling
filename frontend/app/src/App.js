@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Landing from './components/Landing';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
@@ -133,6 +134,10 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
+          <Route 
+            path="/" 
+            element={<Landing />} 
+          />
           <Route 
             path="/login" 
             element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 

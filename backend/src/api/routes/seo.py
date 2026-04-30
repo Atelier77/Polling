@@ -12,7 +12,7 @@ router = APIRouter(tags=["SEO"])
 async def get_sitemap(db: AsyncSession = Depends(get_db)):
     """Генерация sitemap.xml для поисковых систем"""
     
-    base_url = "https://yoursite.com"
+    base_url = "https://index_poll.com"
     
     static_pages = [
         {"loc": f"{base_url}/", "lastmod": datetime.utcnow().isoformat(), "priority": "1.0", "changefreq": "daily"},
@@ -58,8 +58,6 @@ async def get_sitemap(db: AsyncSession = Depends(get_db)):
 
 @router.get("/robots.txt", response_class=Response)
 async def get_robots():
-    """Генерация robots.txt"""
-    
     content = """User-agent: *
 Allow: /
 Allow: /dashboard
@@ -67,17 +65,18 @@ Allow: /poll/
 Allow: /results/
 Allow: /about
 
+#Служебные страницы — не индексировать
 Disallow: /login
 Disallow: /register
 Disallow: /admin
 Disallow: /profile
 Disallow: /api/
+
+#Динамические параметры — не индексировать (дубли)
 Disallow: /*?*sort=
 Disallow: /*?*page=
 
 Sitemap: https://index_poll.com/sitemap.xml
-
 Host: https://index_poll.com
 """
-    
     return Response(content=content, media_type="text/plain")

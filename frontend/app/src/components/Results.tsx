@@ -209,6 +209,8 @@ const Results = ({ user, userRole }: ResultsProps) => {
                 alt={`Баннер опроса: ${results.title}`}
                 className="banner-image"
                 loading="lazy"
+                width="400"
+                height="200"
               />
             </div>
           )}
