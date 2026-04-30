@@ -10,7 +10,6 @@ router = APIRouter(tags=["SEO"])
 
 @router.get("/sitemap.xml", response_class=Response)
 async def get_sitemap(db: AsyncSession = Depends(get_db)):
-    """Генерация sitemap.xml для поисковых систем"""
     
     base_url = "https://index_poll.com"
     

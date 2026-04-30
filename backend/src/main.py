@@ -8,7 +8,7 @@ import traceback
 import logging
 from src.exceptions import ResourceGoneException
 
-from src.api.routes import auth, polls, votes, files, seo
+from src.api.routes import auth, polls, votes, files, seo, weather
 from src.database.connection import create_tables
 from src.config import settings
 
@@ -179,6 +179,7 @@ app.include_router(polls.router, prefix="/api/polls", tags=["Polls"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(files.router, prefix="/api/files", tags=["Files"])
 app.include_router(seo.router, prefix="/api/seo", tags=["SEO"])
+app.include_router(weather.router, prefix="/api/weather", tags=["Weather"])
 
 @app.get("/")
 async def root():

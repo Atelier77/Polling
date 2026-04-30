@@ -109,3 +109,118 @@
 .link:hover {
   text-decoration: underline;
 }
+
+/* frontend/src/components/Landing.css — добавьте в конец: */
+
+/* =============================================================================
+   🔹 Weather Widget на лендинге
+   ============================================================================= */
+
+.hero-weather-widget {
+  margin: 1.5rem 0 2rem 0;
+  display: inline-block;
+}
+
+.hero-weather-widget .weather-widget {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.hero-weather-widget .weather-widget:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-weather-widget .weather-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.hero-weather-widget .weather-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hero-weather-widget .weather-city {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-white);
+  opacity: 0.95;
+}
+
+.hero-weather-widget .weather-temp {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-white);
+}
+
+.hero-weather-widget .weather-desc {
+  font-size: 0.85rem;
+  color: var(--color-white);
+  opacity: 0.9;
+  text-transform: capitalize;
+}
+
+.hero-weather-widget .weather-warning {
+  font-size: 0.8rem;
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* 🔹 Loading state */
+.hero-weather-widget .weather-widget.loading {
+  padding: 0.75rem 1.25rem;
+}
+
+.hero-weather-widget .weather-widget.loading .spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--color-white);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 🔹 Error state */
+.hero-weather-widget .weather-widget.error {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* 🔹 Responsive для мобильных */
+@media (max-width: 768px) {
+  .hero-weather-widget {
+    margin: 1rem 0;
+    width: 100%;
+  }
+  
+  .hero-weather-widget .weather-widget {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+  }
+  
+  .hero-weather-widget .weather-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .hero-weather-widget .weather-temp {
+    font-size: 1.25rem;
+  }
+}

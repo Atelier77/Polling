@@ -1,10 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { WeatherWidget } from './WeatherWidget';
 import SEO from './SEO';
 import './Landing.css';
 
 const Landing = () => {
-  const navigate = useNavigate();
-
   const features = [
     {
       icon: 'fa-user-secret',
@@ -29,8 +28,8 @@ const Landing = () => {
   ];
 
   const stats = [
-    { value: '100+', label: 'Студентов' },
-    { value: 'Множество', label: 'Опросов' },
+    { value: '1000+', label: 'Студентов' },
+    { value: '500+', label: 'Опросов' },
     { value: '99.9%', label: 'Доступность' },
     { value: '24/7', label: 'Поддержка' }
   ];
@@ -40,7 +39,7 @@ const Landing = () => {
       <SEO
         title="Система анонимных опросов для студентов"
         description="Участвуйте в анонимных голосованиях, создавайте опросы и получайте мгновенные результаты. Безопасно, просто, удобно."
-        canonical="https://index_poll.com/"
+        canonical="https://yoursite.com/"
         ogImage="/og-landing.png"
         ogType="website"
         noIndex={false}
@@ -50,7 +49,7 @@ const Landing = () => {
         {JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          "name": "Index Poll",
+          "name": "Poll System",
           "applicationCategory": "EducationalApplication",
           "description": "Система анонимных опросов для студентов и преподавателей",
           "offers": {
@@ -70,7 +69,7 @@ const Landing = () => {
         <nav className="landing-nav" aria-label="Основная навигация">
           <div className="nav-brand">
             <i className="fas fa-poll"></i>
-            <span>Index Poll</span>
+            <span>Poll System</span>
           </div>
           <div className="nav-links">
             <a href="#features" className="nav-link">Возможности</a>
@@ -93,9 +92,14 @@ const Landing = () => {
               Анонимные опросы <span className="highlight">для студентов</span>
             </h1>
             <p className="hero-description">
-              Создавайте опросы, участвуйте в голосованиях и получайте мгновенные результаты. 
+              Участвуйте в голосованиях, создавайте опросы и получайте мгновенные результаты.
               Полная анонимность и безопасность данных гарантированы.
             </p>
+            
+            <div className="hero-weather-widget">
+              <WeatherWidget />
+            </div>
+            
             <div className="hero-actions">
               <Link to="/register" className="btn btn-primary btn-large">
                 <i className="fas fa-user-plus"></i>
@@ -191,15 +195,15 @@ const Landing = () => {
         <div className="footer-content">
           <div className="footer-brand">
             <i className="fas fa-poll"></i>
-            <span>Index Poll</span>
+            <span>Poll System</span>
           </div>
           <div className="footer-links">
             <Link to="/login">Вход</Link>
             <Link to="/register">Регистрация</Link>
-            <a href="mailto:support@indexpoll.com">Поддержка</a>
+            <a href="mailto:support@pollsystem.com">Поддержка</a>
           </div>
           <div className="footer-copyright">
-            <p>&copy; {new Date().getFullYear()} Index Poll. Все права защищены.</p>
+            <p>&copy; {new Date().getFullYear()} Poll System. Все права защищены.</p>
           </div>
         </div>
       </footer>
