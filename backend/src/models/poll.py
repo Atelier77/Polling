@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Bool
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from src.database.connection import Base
+from typing import Optional
 
 class Poll(Base):
     __tablename__ = "polls"
@@ -47,6 +48,7 @@ class OptionResponse(OptionBase):
     id: int
     poll_id: int
     votes: int = 0
+    percentage: Optional[float] = None
     
     model_config = ConfigDict(from_attributes=True)
 

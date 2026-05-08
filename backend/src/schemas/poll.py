@@ -130,7 +130,6 @@ class PollCreate(BaseModel):
         if len(v) < 2:
             raise ValueError('Должно быть минимум 2 варианта ответа')
         
-        # Проверка на уникальность вариантов
         texts = [opt.text.lower().strip() for opt in v]
         if len(texts) != len(set(texts)):
             raise ValueError('Варианты ответов должны быть уникальными')
@@ -200,7 +199,14 @@ class PollResultsResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-
+class OptionResult(BaseModel):
+    """Результат варианта ответа с процентами"""
+    id: int
+    text: str = ""
+    votes: int = 0
+    percentage: float = 0.0
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 T = TypeVar('T')

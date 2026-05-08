@@ -59,19 +59,17 @@ async def get_sitemap(db: AsyncSession = Depends(get_db)):
 async def get_robots():
     content = """User-agent: *
 Allow: /
-Allow: /dashboard
-Allow: /poll/
-Allow: /results/
 Allow: /about
 
-#Служебные страницы — не индексировать
 Disallow: /login
 Disallow: /register
 Disallow: /admin
 Disallow: /profile
 Disallow: /api/
+Disallow: /results/
+Disallow: /dashboard
+Disallow: /poll
 
-#Динамические параметры — не индексировать (дубли)
 Disallow: /*?*sort=
 Disallow: /*?*page=
 

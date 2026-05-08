@@ -16,7 +16,8 @@ from src.schemas.poll import (
     PollListParams, 
     PaginatedResponse,
     PollResultsResponse,
-    PollUpdate
+    PollUpdate,
+    OptionResult
 )
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
 
@@ -265,9 +266,6 @@ async def get_poll_results(
     db: DatabaseDep,
     current_user: CurrentUser
 ):
-    """
-    Получить результаты опроса с процентами
-    """
     try:
         poll_result = await db.execute(
             select(Poll).where(
@@ -290,38 +288,48 @@ async def get_poll_results(
                 )
         
         options_result = await db.execute(
-            select(Option).where(Option.poll_id == poll_id).order_by(Option.votes.desc())
+            select(Option)
+            .where(Option.poll_id == poll_id)
+            .order_by(Option.votes.desc())
         )
         options = options_result.scalars().all()
         
-        total_votes = poll.total_votes or 1
+        total_votes = poll.total_votes or 0
         options_with_percents = []
         
         for option in options:
-            percentage = (option.votes / total_votes) * 100 if total_votes > 0 else 0
+            option_votes = option.votes or 0
+            option_text = str(option.text) if option.text is not None else ""
+            
+            percentage = round((option_votes / total_votes) * 100, 2) if total_votes > 0 else 0.0
             
             options_with_percents.append({
                 "id": option.id,
-                "text": option.text,
-                "votes": option.votes,
-                "percentage": round(percentage, 2)
+                "text": option_text,
+                "votes": option_votes,
+                "percentage": percentage
             })
+        
+        now = datetime.now(timezone.utc)
+        has_ended = poll.end_date < now if poll.end_date else False
         
         return PollResultsResponse(
             poll_id=poll.id,
-            title=poll.title,
-            description=poll.description,
-            total_votes=poll.total_votes,
+            title=poll.title or "",
+            description=poll.description or "",
+            total_votes=total_votes,
             end_date=poll.end_date,
             created_at=poll.created_at,
             options=options_with_percents,
-            has_ended=poll.end_date < datetime.utcnow() if poll.end_date else False
+            has_ended=has_ended
         )
         
     except (HTTPException, ResourceGoneException):
         raise
     except Exception as e:
-        print(f"Error getting poll results {poll_id}: {str(e)}")
+        print(f"Error getting poll results {poll_id}: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении результатов: {str(e)}"

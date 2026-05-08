@@ -1,386 +1,572 @@
+/* frontend/src/components/Results.css */
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+/* =============================================================================
+   🔹 ОСНОВНОЙ КОНТЕЙНЕР
+   ============================================================================= */
 
-        body {
-            background-color: #f9fafb;
-            min-height: 100vh;
-            padding: 20px;
-        }
+.results-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  animation: fadeIn 0.5s ease-out;
+}
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-        .header {
-            background: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            padding: 20px 30px;
-            border-radius: 16px;
-            margin-bottom: 32px;
-        }
+/* =============================================================================
+   🔹 ЗАГОЛОВОК И ОПИСАНИЕ
+   ============================================================================= */
 
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+.results-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
 
-        .back-btn {
-            color: #4f46e5;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 16px;
-            border-radius: 12px;
-            transition: all 0.2s;
-        }
+.results-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
-        .back-btn:hover {
-            background: #f0f5ff;
-            color: #4338ca;
-        }
+.results-description {
+  font-size: 1.1rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
+/* =============================================================================
+   🔹 МЕТА-ИНФОРМАЦИЯ (голоса, дата и т.д.)
+   ============================================================================= */
 
-        .avatar {
-            width: 48px;
-            height: 48px;
-            background: #4f46e5;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 18px;
-        }
+.results-meta {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
 
-        .user-details h2 {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 4px;
-        }
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 12px;
+  font-weight: 600;
+  color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
 
-        .user-details p {
-            font-size: 14px;
-            color: #6b7280;
-        }
+.meta-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
-        .logout-btn {
-            background: none;
-            border: 2px solid #d1d5db;
-            color: #6b7280;
-            padding: 8px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
+.meta-item i {
+  color: #667eea;
+  font-size: 1.2rem;
+}
 
-        .logout-btn:hover {
-            border-color: #4f46e5;
-            color: #4f46e5;
-        }
+/* =============================================================================
+   🔹 СЕКЦИЯ РЕЗУЛЬТАТОВ
+   ============================================================================= */
 
-        /* Poll Info Card */
-        .poll-info-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            padding: 32px;
-            margin-bottom: 32px;
-            border: 1px solid #e5e7eb;
-        }
+.results-section {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2rem;
+}
 
-        .poll-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 24px;
-        }
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 
-        .poll-title {
-            font-size: 28px;
-            font-weight: 800;
-            color: #1f2937;
-            line-height: 1.3;
-            max-width: 80%;
-        }
+.section-title i {
+  color: #667eea;
+}
 
-        .anonymity-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            color: #166534;
-            padding: 8px 16px;
-            border-radius: 24px;
-            font-weight: 700;
-            font-size: 14px;
-            box-shadow: 0 2px 8px rgba(22, 101, 52, 0.1);
-        }
+/* =============================================================================
+   🔹 ПРОГРЕСС-БАРЫ (контейнер)
+   ============================================================================= */
 
-        .poll-description {
-            color: #4b5563;
-            font-size: 18px;
-            line-height: 1.7;
-            margin-bottom: 28px;
-            padding-bottom: 24px;
-            border-bottom: 2px solid #f3f4f6;
-        }
+.results-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
 
-        .poll-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #6b7280;
-            font-size: 16px;
-        }
+.result-bar-container {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #e5e7eb;
+}
 
-        .poll-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #f9fafb;
-            padding: 12px 20px;
-            border-radius: 14px;
-            font-weight: 600;
-        }
+.result-bar-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
 
-        /* Results Section */
-        .results-section {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            padding: 32px;
-            border: 1px solid #e5e7eb;
-        }
+/* =============================================================================
+   🔹 HEADER БАРА (название варианта + процент)
+   ============================================================================= */
 
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 28px;
-        }
+.result-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
 
-        .results-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: #1f2937;
-        }
+.option-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
 
-        .vote-again-btn {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
+.option-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
 
-        .vote-again-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-        }
+.option-percentage {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
 
-        /* Results Items */
-        .results-items {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            margin-bottom: 32px;
-        }
+/* =============================================================================
+   🔹 WRAPPER ДЛЯ ПРОГРЕСС-БАРА
+   ============================================================================= */
 
-        .result-item {
-            position: relative;
-        }
+.result-bar-wrapper {
+  position: relative;
+  height: 40px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
+/* =============================================================================
+   🔹 ЗАПОЛНЕНИЕ БАРА (цветное)
+   ============================================================================= */
 
-        .result-option {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1f2937;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+.result-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1rem;
+  transition: width 1s ease-out;
+  animation: slideIn 1s ease-out;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
 
-        .result-option-number {
-            width: 28px;
-            height: 28px;
-            background: #f3f4f6;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: #6b7280;
-            font-size: 14px;
-        }
+@keyframes slideIn {
+  from {
+    width: 0%;
+  }
+}
 
-        .result-stats {
-            color: #6b7280;
-            font-size: 16px;
-            font-weight: 600;
-        }
+/* =============================================================================
+   🔹 БЛИК НА БАРЕ (анимация)
+   ============================================================================= */
 
-        .progress-bar {
-            width: 100%;
-            height: 16px;
-            background: #f3f4f6;
-            border-radius: 8px;
-            overflow: hidden;
-        }
+.result-bar-fill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 2s infinite;
+}
 
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            border-radius: 8px;
-            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
 
-        /* Success Notice */
-        .success-notice {
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            border: 2px solid #bef264;
-        }
+/* =============================================================================
+   🔹 ТЕКСТ ВНУТРИ БАРА
+   ============================================================================= */
 
-        .success-icon {
-            width: 60px;
-            height: 60px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-            color: #166534;
-            font-size: 28px;
-            box-shadow: 0 4px 12px rgba(22, 101, 52, 0.2);
-        }
+.bar-votes {
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  z-index: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
 
-        .success-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #166534;
-            margin-bottom: 8px;
-        }
+/* =============================================================================
+   🔹 FOOTER БАРА (количество голосов + бейдж)
+   ============================================================================= */
 
-        .success-text {
-            color: #166534;
-            font-size: 16px;
-            line-height: 1.6;
-        }
+.result-bar-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
 
-        @media (max-width: 768px) {
-            .header {
-                padding: 16px 20px;
-                border-radius: 12px;
-            }
-            
-            .header-content {
-                flex-direction: column;
-                gap: 16px;
-                text-align: center;
-            }
-            
-            .back-btn {
-                align-self: flex-start;
-            }
-            
-            .user-info {
-                flex-direction: column;
-                gap: 8px;
-            }
-            
-            .avatar {
-                width: 40px;
-                height: 40px;
-                font-size: 16px;
-            }
-            
-            .user-details h2 {
-                font-size: 16px;
-            }
-            
-            .poll-info-card, .results-section {
-                padding: 24px;
-            }
-            
-            .poll-title {
-                font-size: 22px;
-                max-width: 100%;
-            }
-            
-            .poll-description {
-                font-size: 16px;
-            }
-            
-            .result-option {
-                font-size: 16px;
-            }
-            
-            .vote-again-btn {
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-        }
+.votes-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
 
-        @media (max-width: 480px) {
-            body {
-                padding: 12px;
-            }
-            
-            .container {
-                padding: 0 8px;
-            }
-            
-            .poll-info-card, .results-section {
-                padding: 20px;
-            }
-            
-            .poll-title {
-                font-size: 20px;
-            }
-            
-            .results-title {
-                font-size: 20px;
-            }
-            
-            .success-title {
-                font-size: 18px;
-            }
-        }
+.votes-count i {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* =============================================================================
+   🔹 БЕЙДЖ ЛИДЕРА
+   ============================================================================= */
+
+.winner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.6);
+  }
+}
+
+.winner-badge i {
+  font-size: 1rem;
+}
+
+/* =============================================================================
+   🔹 НЕТ РЕЗУЛЬТАТОВ
+   ============================================================================= */
+
+.no-results {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #9ca3af;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  border: 2px dashed #e5e7eb;
+}
+
+.no-results i {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+  color: #667eea;
+}
+
+.no-results p {
+  font-size: 1.1rem;
+  color: #6b7280;
+}
+
+/* =============================================================================
+   🔹 КНОПКИ ДЕЙСТВИЙ
+   ============================================================================= */
+
+.results-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.75rem;
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.btn-secondary:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary i {
+  font-size: 0.9rem;
+}
+
+/* =============================================================================
+   🔹 ЗАГРУЗКА (LOADING STATE)
+   ============================================================================= */
+
+.loading-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6b7280;
+}
+
+.loading-state i {
+  font-size: 3rem;
+  color: #667eea;
+  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+}
+
+.loading-state p {
+  font-size: 1.1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =============================================================================
+   🔹 СОСТОЯНИЕ ОШИБКИ
+   ============================================================================= */
+
+.error-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 12px;
+  border: 2px solid #fecaca;
+}
+
+.error-state i {
+  font-size: 3rem;
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+.error-state h3 {
+  font-size: 1.25rem;
+  color: #991b1b;
+  margin-bottom: 0.5rem;
+}
+
+.error-state p {
+  color: #7f1d1d;
+  margin-bottom: 1.5rem;
+}
+
+/* =============================================================================
+   🔹 АДАПТИВНОСТЬ (МОБИЛЬНЫЕ)
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .results-container {
+    padding: 1rem;
+  }
+  
+  .results-title {
+    font-size: 1.5rem;
+  }
+  
+  .results-description {
+    font-size: 1rem;
+  }
+  
+  .section-title {
+    font-size: 1.25rem;
+  }
+  
+  .results-section {
+    padding: 1.25rem;
+  }
+  
+  .result-bar-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .option-percentage {
+    font-size: 1.1rem;
+    align-self: flex-start;
+  }
+  
+  .results-meta {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .meta-item {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .results-actions {
+    flex-direction: column;
+  }
+  
+  .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* =============================================================================
+   🔹 ТЁМНАЯ ТЕМА (опционально)
+   ============================================================================= */
+
+@media (prefers-color-scheme: dark) {
+  .results-container {
+    color: #f3f4f6;
+  }
+  
+  .results-title {
+    background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .results-description {
+    color: #9ca3af;
+  }
+  
+  .results-section {
+    background: #1f2937;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .section-title {
+    color: #f3f4f6;
+  }
+  
+  .result-bar-container {
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    border-color: #4b5563;
+  }
+  
+  .option-info {
+    color: #f3f4f6;
+  }
+  
+  .result-bar-wrapper {
+    background: #374151;
+  }
+  
+  .result-bar-footer {
+    color: #9ca3af;
+  }
+  
+  .btn-secondary {
+    background: #1f2937;
+    color: #818cf8;
+    border-color: #818cf8;
+  }
+  
+  .btn-secondary:hover {
+    background: #818cf8;
+    color: white;
+  }
+}
+
+/* =============================================================================
+   🔹 ПЕЧАТЬ (для печати результатов)
+   ============================================================================= */
+
+@media print {
+  .results-actions,
+  .back-btn {
+    display: none !important;
+  }
+  
+  .results-container {
+    max-width: 100%;
+    padding: 0;
+  }
+  
+  .results-section {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+  }
+  
+  .result-bar-container {
+    break-inside: avoid;
+  }
+}

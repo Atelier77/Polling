@@ -74,6 +74,7 @@ interface VoteResponse {
 }
 
 export const DataService = {
+  
   async request(endpoint: string, options: RequestOptions = {}): Promise<any> {
     const maxRetries = 1;
     let retryCount = 0;
@@ -282,14 +283,49 @@ async getPolls(queryString: string = ''): Promise<any> {
     }
   },
 
-  async getPollResults(pollId: number): Promise<ResultsData | null> {
-    try {
-      return await this.request(`/api/polls/${pollId}/results`); 
-    } catch (error) {
-      console.warn('Backend недоступен:', error);
-      return null;
+  // frontend/src/services/DataService.ts
+
+async getPollResults(pollId: number): Promise<any> {  // ← Временно any для отладки
+  try {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}/results`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('🔍 DataService: Response status', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-  },
+    
+    const data = await response.json();
+    console.log('🔍 DataService: Raw response', data);  // ← Ключевой лог!
+    
+    // 🔹 Проверка структуры ответа:
+    // Если бэкенд возвращает {"poll_id": ..., "options": [...]} напрямую:
+    if (data.poll_id && Array.isArray(data.options)) {
+      console.log('✅ DataService: Returning data directly');
+      return data;
+    }
+    
+    // Если бэкенд возвращает {"success": true, "data": {...}}:
+    if (data.success && data.data) {
+      console.log('✅ DataService: Returning data.data');
+      return data.data;
+    }
+    
+    // fallback
+    console.warn('⚠️ DataService: Unknown response format', data);
+    return data;
+    
+  } catch (error) {
+    console.error('❌ DataService: getPollResults error', error);
+    throw error;
+  }
+},
 
   async createPoll(pollData: {
     title: string;
@@ -354,7 +390,7 @@ async getPolls(queryString: string = ''): Promise<any> {
     const pollsArray = Array.isArray(polls) ? polls : polls.items;
     const cacheData = {
       polls: pollsArray,
-      timestamp: Date.now()
+      created_at: Date.now()
     };
     localStorage.setItem(STORAGE_KEYS.POLLS_CACHE, JSON.stringify(cacheData));
   },
@@ -365,7 +401,7 @@ async getPolls(queryString: string = ''): Promise<any> {
     
     try {
       const cacheData = JSON.parse(cached);
-      const isExpired = Date.now() - cacheData.timestamp > (5 * 60 * 1000); 
+      const isExpired = Date.now() - cacheData.created_at > (5 * 60 * 1000); 
       
       return isExpired ? [] : cacheData.polls;
     } catch (error) {
@@ -400,7 +436,7 @@ async getPolls(queryString: string = ''): Promise<any> {
     
     filteredQueue.push({
       ...voteData,
-      timestamp: new Date().toISOString()
+      created_at: new Date().toISOString()
     });
     
     localStorage.setItem(STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(filteredQueue));
@@ -414,7 +450,7 @@ async getPolls(queryString: string = ''): Promise<any> {
     localStorage.setItem(STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(newQueue));
   },
 
-  getSyncQueue(): Array<{ poll_id: number; option_id: number; student_id: string; timestamp: string }> {
+  getSyncQueue(): Array<{ poll_id: number; option_id: number; student_id: string; created_at: string }> {
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.SYNC_QUEUE) || '[]');
   },
 

@@ -1,35 +1,23 @@
 from fastapi import APIRouter, Query
-from typing import Optional
 import httpx
-import os
+import traceback
+from src.config import settings
 
 router = APIRouter(tags=["Weather"])
 
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
+OPENWEATHER_API_KEY = settings.OPENWEATHER_API_KEY
 OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5"
 
 @router.get("/current")
 async def get_current_weather(city: str = Query(default="Moscow", max_length=100)):
-    """Получение текущей погоды"""
     
     if not OPENWEATHER_API_KEY:
-        return {
-            "success": True,
-            "data": {
-                "city": city,
-                "temperature": 20,  # ← Демо-данные
-                "feels_like": 18,
-                "description": "Сервис погоды не настроен (нет API ключа)",
-                "icon": "01d",
-                "humidity": 60,
-                "wind_speed": 5,
-                "is_fallback": True,
-                "warning": "Укажите OPENWEATHER_API_KEY в .env для реальных данных"
-            }
-        }
+        return _fallback(city, "API ключ не настроен")
     
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        print(f"🌐 Making request to {OPENWEATHER_BASE_URL}/weather")
+        
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
                 f"{OPENWEATHER_BASE_URL}/weather",
                 params={
@@ -40,21 +28,9 @@ async def get_current_weather(city: str = Query(default="Moscow", max_length=100
                 }
             )
             
-            if response.status_code == 404:
-                return {
-                    "success": True,
-                    "data": {
-                        "city": city,
-                        "temperature": None,
-                        "description": "Город не найден",
-                        "icon": None,
-                        "humidity": None,
-                        "wind_speed": None,
-                        "is_fallback": True
-                    }
-                }
+            if response.status_code != 200:
+                return _fallback(city, f"HTTP {response.status_code}")
             
-            response.raise_for_status()
             data = response.json()
             
             return {
@@ -72,17 +48,23 @@ async def get_current_weather(city: str = Query(default="Moscow", max_length=100
             }
             
     except Exception as e:
-        print(f"❌ Weather API error: {e}")
-        return {
-            "success": True,
-            "data": {
-                "city": city,
-                "temperature": None,
-                "description": "Ошибка получения данных",
-                "icon": None,
-                "humidity": None,
-                "wind_speed": None,
-                "is_fallback": True,
-                "warning": str(e)
-            }
+        print(f"ERROR: {type(e).__name__}: {e}")
+        print(f"Traceback:\n{traceback.format_exc()}")
+        return _fallback(city, f"{type(e).__name__}: {e}")
+
+
+def _fallback(city: str, warning: str) -> dict:
+    print(f"Fallback: {warning}")
+    return {
+        "success": True,
+        "data": {
+            "city": city,
+            "temperature": None,
+            "description": "Ошибка получения данных",
+            "icon": None,
+            "humidity": None,
+            "wind_speed": None,
+            "is_fallback": True,
+            "warning": warning
         }
+    }

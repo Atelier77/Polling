@@ -1,33 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import Landing from './components/Landing';
 import Login from './components/Login';
 import Register from './components/Register';
-import Dashboard from './components/Dashboard';
-import Poll from './components/Poll';
-import Results from './components/Results';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthService, USER_ROLES } from './services/AuthService';
 import { DataService } from './services/DataService';
 import './App.css';
-import { lazy, Suspense } from 'react';
 
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const Poll = lazy(() => import('./components/Poll'));
+const Results = lazy(() => import('./components/Results'));
+
+const LoadingFallback = () => (
+  <div className="loading-fallback">
+    <div className="spinner"></div>
+    <p>Загрузка...</p>
+  </div>
+);
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const Dashboard = lazy(() => import('./components/Dashboard'));
-  const Poll = lazy(() => import('./components/Poll'));
-  const Results = lazy(() => import('./components/Results'));
-  const LoadingFallback = () => (
-    <div className="loading-fallback">
-      <div className="spinner"></div>
-      <p>Загрузка...</p>
-    </div>
-  );
 
   useEffect(() => { 
     initializeAuth(); 
@@ -75,9 +72,9 @@ function App() {
       const result = await AuthService.login(studentId, password);
       
       if (result.success) {
-        console.log('🔍 App: Login success');
-        console.log('🔍 App: result.user =', result.user);
-        console.log('🔍 App: result.role =', result.role);
+        console.log('App: Login success');
+        console.log('App: result.user =', result.user);
+        console.log('App: result.role =', result.role);
         
         setIsAuthenticated(true);
         setUser(result.user || null);
@@ -103,41 +100,29 @@ function App() {
     console.log('App: Logout called');
 
     try {
-    await AuthService.logout();
-  } catch (error) {
-    console.warn('App: Logout API error, continuing anyway:', error);
-  }
+      await AuthService.logout();
+    } catch (error) {
+      console.warn('App: Logout API error, continuing anyway:', error);
+    }
     
     setIsAuthenticated(false);
     setUser(null);
     setUserRole(null);
-    
-  //   window.location.replace('/login');
-  
-  // // 🔹 4. Альтернатива: если replace не сработал, пробуем href
-  // setTimeout(() => {
-  //   if (window.location.pathname !== '/login') {
-  //     console.log('🔍 App: Forced redirect to /login');
-  //     window.location.href = '/login';
-  //   }
-  // }, 100);
   };
 
   if (loading) {
-    console.log('🔍 App: Rendering loading screen');
+    console.log('App: Rendering loading screen');
     return <div className="loading-screen">Загрузка...</div>;
   }
 
-  console.log('🔍 App: Rendering routes', { isAuthenticated, user, userRole });
+  console.log('App: Rendering routes', { isAuthenticated, user, userRole });
 
   return (
     <Router>
       <div className="App">
         <Routes>
-          <Route 
-            path="/" 
-            element={<Landing />} 
-          />
+          <Route path="/" element={<Landing />} />
+          
           <Route 
             path="/login" 
             element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
@@ -146,6 +131,7 @@ function App() {
             path="/register" 
             element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" replace />} 
           />
+          
           <Route 
             path="/dashboard" 
             element={
@@ -160,41 +146,51 @@ function App() {
               </Suspense>
             } 
           />
+          
           <Route 
             path="/poll/:pollId" 
             element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
-                <Poll 
-                  user={user} 
-                  userRole={userRole} 
-                />
-              </ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
+                  <Poll 
+                    user={user} 
+                    userRole={userRole} 
+                  />
+                </ProtectedRoute>
+              </Suspense>
             } 
           /> 
+          
           <Route 
             path="/results/:pollId" 
             element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
-                <Results 
-                  user={user} 
-                  userRole={userRole} 
-                />
-              </ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ProtectedRoute allowedRoles={[USER_ROLES.USER, USER_ROLES.ADMIN]}>
+                  <Results 
+                    user={user} 
+                    userRole={userRole} 
+                  />
+                </ProtectedRoute>
+              </Suspense>
             } 
           />
+          
           <Route 
             path="/admin" 
             element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
-                <Dashboard 
-                  user={user} 
-                  userRole={userRole} 
-                  onLogout={handleLogout} 
-                  adminView={true} 
-                />
-              </ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+                  <Dashboard 
+                    user={user} 
+                    userRole={userRole} 
+                    onLogout={handleLogout} 
+                    adminView={true} 
+                  />
+                </ProtectedRoute>
+              </Suspense>
             } 
           />
+          
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

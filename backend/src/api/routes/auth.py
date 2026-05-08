@@ -8,7 +8,7 @@ from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
 from src.utils.security import hash_token
 from src.schemas.user import Token, UserRegister, UserLogin
 
-router = APIRouter(tags=["Auth"])
+router = APIRouter()
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(
@@ -83,11 +83,9 @@ async def refresh_token(
             )
         
         auth_service = AuthService(db)
-        ip_address = request.client.host if request.client else None
         
         tokens = await auth_service.refresh_access_token(
             refresh_token=refresh_token,
-            ip_address=ip_address
         )
         
         if not tokens:

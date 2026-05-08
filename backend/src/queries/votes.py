@@ -37,7 +37,7 @@ async def get_user_votes(db: AsyncSession, student_id: str) -> List[dict]:
                 "poll_title": poll.title,
                 "option_id": vote.option_id,
                 "option_text": option.text,
-                "timestamp": vote.timestamp
+                "created_at": vote.created_at
             })
     
     return vote_list

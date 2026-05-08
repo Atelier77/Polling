@@ -265,7 +265,6 @@ class RefreshTokenRepository(DatabaseManager):
 
     async def create_token(self, student_id: str, token_hash: str, 
                           expires_at: datetime, 
-                          ip_address: str = None, 
                           user_agent: str = None) -> RefreshToken:
         """Создать новую запись refresh токена"""
         return await self.create(
@@ -273,7 +272,6 @@ class RefreshTokenRepository(DatabaseManager):
             student_id=student_id,
             token_hash=token_hash,
             expires_at=expires_at,
-            ip_address=ip_address,
             user_agent=user_agent
         )
 

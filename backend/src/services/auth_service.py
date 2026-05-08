@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import hashlib
@@ -88,7 +88,7 @@ class AuthService:
         
         return user
     
-    async def create_token_pair(self, user: User, ip_address: str = None, user_agent: str = None) -> dict:
+    async def create_token_pair(self, user: User, user_agent: str = None) -> dict:
 
         access_token = create_access_token(
             data={"sub": user.student_id},
@@ -101,7 +101,6 @@ class AuthService:
             student_id=user.student_id,
             token_hash=hash_token(refresh_token),
             expires_at=expires_at,
-            ip_address=ip_address,
             user_agent=user_agent
         )
         
@@ -121,7 +120,7 @@ class AuthService:
         }
     
     
-    async def refresh_access_token(self, refresh_token: str, ip_address: str = None) -> Optional[dict]:
+    async def refresh_access_token(self, refresh_token: str) -> Optional[dict]:
         """
         Обновление access токена по refresh токену с ротацией
         
@@ -152,7 +151,8 @@ class AuthService:
         if not token_record or token_record.is_revoked:
             return None
         
-        if token_record.expires_at < datetime.utcnow():
+        now = datetime.now(timezone.utc)
+        if token_record.expires_at < now:
             return None
         
         user = await self.repo.users.get_by_student_id(student_id)
@@ -171,7 +171,6 @@ class AuthService:
             student_id=student_id,
             token_hash=hash_token(new_refresh_token),
             expires_at=new_expires_at,
-            ip_address=ip_address,
             user_agent=token_record.user_agent
         )
         

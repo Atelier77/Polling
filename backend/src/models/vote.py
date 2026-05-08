@@ -14,7 +14,6 @@ class Vote(Base):
     student_id = Column(String, ForeignKey("users.student_id", ondelete="CASCADE"), nullable=False)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    ip_address = Column(String(45), nullable=True)
     
     poll = relationship("Poll", back_populates="votes")
     option = relationship("Option", back_populates="votes_entries")

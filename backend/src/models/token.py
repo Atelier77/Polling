@@ -21,7 +21,6 @@ class RefreshToken(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     
-    ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     
     user = relationship("User", back_populates="refresh_tokens")
