@@ -1,8 +1,15 @@
+# src/schemas/poll.py
+"""Схемы Pydantic для работы с опросами"""
+
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List, Generic, TypeVar
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
+
+# =============================================================================
+# 🔹 ENUMS
+# =============================================================================
 
 class PollStatus(str, Enum):
     """Статусы опроса для фильтрации"""
@@ -26,6 +33,9 @@ class SortOrder(str, Enum):
     DESC = "desc"
 
 
+# =============================================================================
+# 🔹 ПАРАМЕТРЫ ЗАПРОСА
+# =============================================================================
 
 class PollListParams(BaseModel):
     """Параметры для получения списка опросов"""
@@ -75,6 +85,9 @@ class PollListParams(BaseModel):
         return v
 
 
+# =============================================================================
+# 🔹 СХЕМЫ ДЛЯ СОЗДАНИЯ/ОБНОВЛЕНИЯ
+# =============================================================================
 
 class OptionCreate(BaseModel):
     """Схема для создания варианта ответа"""
@@ -117,19 +130,53 @@ class PollCreate(BaseModel):
         description="Варианты ответов (минимум 2)"
     )
     
-    @field_validator('end_date')
+    # =====================================================================
+    # 🔹 ВАЛИДАТОР ДАТЫ (исправленный — mode='before' + timezone-aware)
+    # =====================================================================
+    @field_validator('end_date', mode='before')
     @classmethod
-    def validate_end_date(cls, v: datetime) -> datetime:
-        if v <= datetime.utcnow():
+    def validate_end_date(cls, v):
+        """
+        Проверяет, что дата окончания в будущем.
+        
+        🔹 mode='before' — обрабатывает значение ДО парсинга Pydantic
+        🔹 Гарантирует, что сравнение происходит между timezone-aware datetime
+        """
+        if v is None:
+            return v
+        
+        # 🔹 Если строка — парсим с обработкой часового пояса
+        if isinstance(v, str):
+            # Заменяем 'Z' на '+00:00' для совместимости с fromisoformat
+            v = v.replace('Z', '+00:00')
+            try:
+                v = datetime.fromisoformat(v)
+            except ValueError:
+                # Fallback: парсим базовый формат и добавляем UTC
+                v = datetime.strptime(v[:19], '%Y-%m-%dT%H:%M:%S')
+                v = v.replace(tzinfo=timezone.utc)
+        
+        # 🔹 Гарантируем, что результат — timezone-aware datetime
+        if hasattr(v, 'tzinfo') and v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        
+        # 🔹 Теперь сравнение безопасно: оба datetime — aware
+        now = datetime.now(timezone.utc)
+        if v <= now:
             raise ValueError('Дата окончания должна быть в будущем')
+        
         return v
     
+    # =====================================================================
+    # 🔹 ВАЛИДАТОР ОПЦИЙ
+    # =====================================================================
     @field_validator('options')
     @classmethod
     def validate_options(cls, v: List[OptionCreate]) -> List[OptionCreate]:
         if len(v) < 2:
             raise ValueError('Должно быть минимум 2 варианта ответа')
         
+        # Проверка уникальности текстов опций (без учёта регистра)
         texts = [opt.text.lower().strip() for opt in v]
         if len(texts) != len(set(texts)):
             raise ValueError('Варианты ответов должны быть уникальными')
@@ -151,13 +198,40 @@ class PollUpdate(BaseModel):
     )
     end_date: Optional[datetime] = None
     
-    @field_validator('end_date')
+    # =====================================================================
+    # 🔹 ВАЛИДАТОР ДАТЫ (исправленный — такой же как в PollCreate)
+    # =====================================================================
+    @field_validator('end_date', mode='before')
     @classmethod
-    def validate_end_date(cls, v: Optional[datetime]) -> Optional[datetime]:
-        if v and v <= datetime.utcnow():
+    def validate_end_date(cls, v):
+        """
+        Проверяет, что дата окончания в будущем.
+        Работает с Optional[datetime] — пропускает None.
+        """
+        if v is None:
+            return v
+        
+        if isinstance(v, str):
+            v = v.replace('Z', '+00:00')
+            try:
+                v = datetime.fromisoformat(v)
+            except ValueError:
+                v = datetime.strptime(v[:19], '%Y-%m-%dT%H:%M:%S')
+                v = v.replace(tzinfo=timezone.utc)
+        
+        if hasattr(v, 'tzinfo') and v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        if v <= now:
             raise ValueError('Дата окончания должна быть в будущем')
+        
         return v
 
+
+# =============================================================================
+# 🔹 СХЕМЫ ОТВЕТОВ
+# =============================================================================
 
 class OptionResponse(BaseModel):
     """Схема для варианта ответа в ответе"""
@@ -183,6 +257,16 @@ class PollResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OptionResult(BaseModel):
+    """Результат варианта ответа с процентами"""
+    id: int
+    text: str = ""
+    votes: int = 0
+    percentage: float = 0.0
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PollResultsResponse(BaseModel):
     """Схема для ответа с результатами опроса"""
     poll_id: int
@@ -199,15 +283,10 @@ class PollResultsResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-class OptionResult(BaseModel):
-    """Результат варианта ответа с процентами"""
-    id: int
-    text: str = ""
-    votes: int = 0
-    percentage: float = 0.0
-    
-    model_config = ConfigDict(from_attributes=True)
 
+# =============================================================================
+# 🔹 УНИВЕРСАЛЬНЫЕ СХЕМЫ
+# =============================================================================
 
 T = TypeVar('T')
 

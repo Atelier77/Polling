@@ -71,7 +71,7 @@ async def vote(
         
         await db.refresh(new_vote)
         
-        print(f"✅ Vote created: user={student_id}, poll={poll_id}, option={option_id}")
+        print(f"Vote created: user={student_id}, poll={poll_id}, option={option_id}")
         
         return {
             "success": True, 
@@ -83,7 +83,7 @@ async def vote(
         raise
     except Exception as e:
         await db.rollback()
-        print(f"❌ Error creating vote: {str(e)}")
+        print(f"Error creating vote: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"Ошибка при голосовании: {str(e)}"

@@ -48,7 +48,7 @@ async def is_admin(db: AsyncSession, student_id: str) -> bool:
 
 async def get_all_users(db: AsyncSession):
     repo = Repository(db)
-    users = await repo.users.get_all()
+    users = await repo.users.get_all(User)
     return [UserResponse.model_validate(user) for user in users]
 
 async def update_user_role(db: AsyncSession, student_id: str, new_role: UserRole) -> UserResponse | None:

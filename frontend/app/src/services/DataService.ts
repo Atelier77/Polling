@@ -69,6 +69,12 @@ interface LoginResponse {
 
 interface VoteResponse {
   success: boolean;
+  data?: {
+    id: number;
+    poll_id: number;
+    option_id: number;
+    created_at?: string;
+  };
   synced?: boolean;
   error?: string;
 }

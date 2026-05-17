@@ -62,8 +62,9 @@ const Login = ({ onLogin }: LoginProps) => {
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Номер студенческого</label>
+            <label htmlFor="studentId">Номер студенческого</label>
             <input
+              id="studentId"
               type="text"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
@@ -73,8 +74,9 @@ const Login = ({ onLogin }: LoginProps) => {
           </div>
           
           <div className="form-group">
-            <label>Пароль</label>
+            <label htmlFor="password">Пароль</label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

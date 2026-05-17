@@ -375,3 +375,28 @@ class FileService:
         except Exception as e:
             logger.error(f"Unexpected error checking bucket: {str(e)}")
             return False
+        
+
+    def validate_file_size(self, file_size: int, category: str = "attachment") -> bool:
+        
+        max_size = settings.get_max_file_size(category)
+        return file_size <= max_size
+
+
+    def is_file_type_allowed(self, content_type: str, category: str = "attachment") -> bool:
+        
+        return settings.is_file_type_allowed(content_type, category)
+
+
+    def generate_file_key(self, original_filename: str, category: str = "attachment") -> str:
+        
+        from pathlib import Path
+        
+        ext = Path(original_filename).suffix.lower()
+        
+        if not ext or ext not in settings.ALLOWED_FILE_EXTENSIONS:
+            ext = ".bin"
+        
+        unique_id = uuid.uuid4().hex
+        
+        return f"{category}/{unique_id}{ext}"

@@ -1,8 +1,12 @@
+# src/api/routes/polls.py
+"""Маршруты для работы с опросами"""
+
 from fastapi import APIRouter, HTTPException, status, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc
-from datetime import datetime, timezone
+from datetime import datetime, timezone  # ← timezone импортирован!
 from typing import List, Optional
+
 from src.services.file_service import FileService
 from src.exceptions import ResourceGoneException
 
@@ -20,13 +24,14 @@ from src.schemas.poll import (
     OptionResult
 )
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
+from fastapi import File, Form
 
 router = APIRouter()
+
 
 def _base_poll_query():
     """Базовый запрос, исключающий мягко удалённые опросы"""
     return select(Poll).where(Poll.is_deleted == False)
-
 
 @router.get("/")
 async def get_polls(
@@ -40,10 +45,12 @@ async def get_polls(
     try:
         query = _base_poll_query()
         
+        now = datetime.now(timezone.utc)
+        
         if params.status == "active":
-            query = query.where(Poll.end_date > datetime.utcnow())
+            query = query.where(Poll.end_date > now)
         elif params.status == "expired":
-            query = query.where(Poll.end_date <= datetime.utcnow())
+            query = query.where(Poll.end_date <= now)
         
         if params.search:
             search_term = f"%{params.search}%"
@@ -120,13 +127,13 @@ async def get_polls(
             detail=f"Ошибка при получении опросов: {str(e)}"
         )
 
-
 @router.post("/", response_model=PollResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_poll(
     poll_data: PollCreate,
     db: DatabaseDep,
     admin_id: CurrentAdmin
 ):
+    """Создание нового опроса (только админ)"""
     try:
         if not poll_data.title or not isinstance(poll_data.title, str):
             raise HTTPException(400, "Заголовок обязателен")
@@ -135,7 +142,7 @@ async def create_new_poll(
         if not options or len(options) < 2:
             raise HTTPException(400, "Должно быть минимум 2 варианта ответа")
         
-        if poll_data.end_date <= datetime.utcnow():
+        if poll_data.end_date <= datetime.now(timezone.utc):
             raise HTTPException(400, "Дата окончания должна быть в будущем")
         
         exists = await db.execute(
@@ -192,7 +199,6 @@ async def create_new_poll(
         await db.rollback()
         print(f"Error creating poll: {str(e)}")
         raise HTTPException(500, f"Ошибка при создании опроса: {str(e)}")
-    
 
 @router.get("/{poll_id}", response_model=PollResponse)
 async def get_poll(
@@ -200,9 +206,7 @@ async def get_poll(
     db: DatabaseDep,
     current_user: CurrentUser
 ):
-    """
-    Получить опрос по ID
-    """
+    """Получить опрос по ID"""
     try:
         result = await db.execute(
             select(Poll).where(
@@ -266,6 +270,7 @@ async def get_poll_results(
     db: DatabaseDep,
     current_user: CurrentUser
 ):
+    """Получить результаты голосования по опросу"""
     try:
         poll_result = await db.execute(
             select(Poll).where(
@@ -370,11 +375,9 @@ async def update_poll(
 async def get_active_polls(
     db: DatabaseDep
 ):
-    """
-    Получить только активные опросы (еще не завершившиеся)
-    """
+    """Получить только активные опросы (еще не завершившиеся)"""
     try:
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
         
         result = await db.execute(
             select(Poll)
@@ -441,39 +444,36 @@ async def delete_poll(
     if poll.is_deleted:
         return Response(status_code=204) 
     
-    # защита от удаления опросов с голосами
+    # Защита от удаления опросов с голосами (закомментировано)
     # votes_count = await db.execute(
     #     select(func.count()).select_from(Vote).where(Vote.poll_id == poll_id)
     # )
     # if votes_count.scalar() > 0:
-        
     #     raise HTTPException(
     #         status_code=409, 
     #         detail="Нельзя удалить опрос с голосами. Сначала удалите голоса или используйте архивацию."
     #     )
     
     poll.is_deleted = True
+    # 🔹 ИСПРАВЛЕНИЕ: timezone-aware datetime для deleted_at
     poll.deleted_at = datetime.now(timezone.utc)
     
     await db.commit()
     
     return Response(status_code=204)
 
+
 @router.put("/{poll_id}/banner")
 async def update_poll_banner(
     poll_id: int,
-    banner_data: dict,
     db: DatabaseDep,
-    current_admin: CurrentAdmin
+    current_admin: CurrentAdmin,
+    banner_file_id: int = Form(...),
 ):
-    """Привязать баннер к опросу"""
+    """Привязать существующий файл-баннер к опросу"""
     try:
-        banner_file_id = banner_data.get("banner_file_id")
-        
-        if not banner_file_id:
-            raise HTTPException(400, detail="banner_file_id обязателен")
-        
         from src.models.file import FileMetadata
+        
         file_meta = await db.get(FileMetadata, banner_file_id)
         if not file_meta:
             raise HTTPException(404, detail=f"Файл {banner_file_id} не найден")

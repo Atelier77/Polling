@@ -35,7 +35,7 @@ class AuthService:
     
     def hash_password(self, password: str) -> str:
 
-        print(f"🔍 DEBUG hash_password:")
+        print(f"DEBUG hash_password:")
         print(f"   Type: {type(password)}")
         print(f"   Value: {repr(password)}")
         print(f"   Length: {len(password) if isinstance(password, str) else 'N/A'}")
@@ -54,7 +54,8 @@ class AuthService:
     
 
     async def register(self, user_data: UserRegister) -> User:
-
+        """Регистрация нового пользователя с правильной ролью"""
+        
         user = await self.repo.users.get_by_student_id(user_data.student_id)
         
         if user:
@@ -62,12 +63,30 @@ class AuthService:
         
         hashed_password = self.hash_password(user_data.password)
         
+        input_role = getattr(user_data, 'role', None)
+        
+        if input_role is None:
+            role = UserRole.USER
+        elif isinstance(input_role, UserRole):
+            role = input_role
+        elif isinstance(input_role, str):
+
+            role_str = input_role.strip().lower()
+            if role_str == "admin":
+                role = UserRole.ADMIN
+            elif role_str == "guest":
+                role = UserRole.GUEST
+            else:
+                role = UserRole.USER
+        else:
+            role = UserRole.USER
+                
         new_user = User(
             student_id=user_data.student_id,
             name=user_data.name,
             faculty=user_data.faculty,
             password_hash=hashed_password,
-            role="USER"
+            role=role
         )
         
         self.db.add(new_user)

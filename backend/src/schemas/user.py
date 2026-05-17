@@ -9,6 +9,8 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=6, max_length=100)
     name: str = Field(..., min_length=2, max_length=100)
     faculty: str = Field(..., min_length=2, max_length=200)
+    role: Optional[str] = "user"
+
 
 class UserLogin(BaseModel):
     student_id: str = Field(..., min_length=3, max_length=20)

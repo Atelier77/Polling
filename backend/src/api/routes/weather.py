@@ -15,7 +15,7 @@ async def get_current_weather(city: str = Query(default="Moscow", max_length=100
         return _fallback(city, "API ключ не настроен")
     
     try:
-        print(f"🌐 Making request to {OPENWEATHER_BASE_URL}/weather")
+        print(f"Making request to {OPENWEATHER_BASE_URL}/weather")
         
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(

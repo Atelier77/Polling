@@ -10,12 +10,28 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
+    
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    
+    "types": ["node", "jest", "@testing-library/jest-dom"],
+    
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src", "src/types/**/*.d.ts"]
+  "include": [
+    "src",
+    "src/types/**/*.d.ts",
+    "tests"
+  ],
+  "references": [
+    { "path": "./tsconfig.node.json" }
+  ]
 }
