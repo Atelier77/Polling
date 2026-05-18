@@ -1,20 +1,18 @@
-FROM node:20.9.0 AS build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
-
-COPY app/package*.json ./
+COPY package*.json ./
 RUN npm install
 
-COPY app .
-
+COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-COPY --from=build /app/dist /usr/share/nginx/html
-
-COPY app/frontend.conf /etc/nginx/conf.d/
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:80/health || exit 1
 
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,5 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
+from src.models.vote import Vote
+from src.models.poll import Option, Poll 
 
 from src.queries.orm import Repository
 
@@ -23,12 +25,12 @@ async def get_user_votes(db: AsyncSession, student_id: str) -> List[dict]:
     """Получить все голоса пользователя"""
     repo = Repository(db)
     
-    votes = await repo.votes.get_many_by_field("student_id", student_id)
+    votes = await repo.votes.get_many_by_field(Vote, "student_id", student_id)
     
     vote_list = []
     for vote in votes:
         poll = await repo.polls.get_by_id_with_details(vote.poll_id)
-        option = await repo.options.get_by_id(vote.option_id)
+        option = await repo.options.get_by_id(Option, vote.option_id)
         
         if poll and option:
             vote_list.append({

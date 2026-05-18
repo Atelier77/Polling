@@ -58,7 +58,7 @@ async def update_user_role(db: AsyncSession, student_id: str, new_role: UserRole
 
 async def get_users_by_role(db: AsyncSession, role: UserRole) -> list:
     repo = Repository(db)
-    users = await repo.users.get_many_by_field("role", role)
+    users = await repo.users.get_many_by_field(User, "role", role)
     return [UserResponse.model_validate(user) for user in users]
 
 # async def update_user_admin_status(db: AsyncSession, student_id: str, is_admin: bool) -> UserResponse | None:
