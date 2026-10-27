@@ -29,6 +29,11 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASS=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - SECRET_KEY=${SECRET_KEY}
       - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY}

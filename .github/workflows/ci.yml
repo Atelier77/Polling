@@ -228,9 +228,7 @@ jobs:
     timeout-minutes: 15
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    environment: production
-    
+        
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -248,53 +246,16 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          port: 22
           script: |
-            set -e  # Останавливаем скрипт при первой ошибке
+            echo "Starting deployment on Windows..."
             
-            echo "Starting deployment..."
-            cd /opt/poll_system
+            cd /d C:\Courses\Course_3\FS
             
             echo "Pulling latest code..."
             git pull origin main
             
-            echo "Creating .env file..."
-            cat > .env << EOF
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            SECRET_KEY=${{ secrets.SECRET_KEY }}
-            REFRESH_SECRET_KEY=${{ secrets.REFRESH_SECRET_KEY }}
-            APP_ENV=production
-            LOG_LEVEL=INFO
-            CORS_ORIGINS=["https://index_poll.com"]
-            EOF
-            
-            echo "Pulling latest Docker images..."
-            docker compose pull
-            
-            echo "Restarting services..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
-            
-            echo "Waiting for services to be healthy..."
-            sleep 20
-            
-            echo "Running health check..."
-            if curl -sf http://localhost:8000/health; then
-              echo "Backend is healthy!"
-            else
-              echo "Backend health check failed!"
-              docker compose logs backend --tail=50
-              exit 1
-            fi
-            
-            echo "Cleaning up old images..."
-            docker image prune -f --filter="until=24h"
+            echo "Rebuilding and restarting containers..."
+            docker compose up -d --build
             
             echo "Deployment completed successfully!"
-
-      - name: Final health check (из runner)
-        run: |
-          echo "Final health check from GitHub Actions..."
-          # curl -sf https://index_poll.com/health || exit 1
-          echo "Health check passed!"

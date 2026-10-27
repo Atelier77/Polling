@@ -19,7 +19,7 @@ def find_env_path() -> str:
 
 env_path = find_env_path()
 if env_path:
-    load_dotenv(dotenv_path=env_path, override=True)
+    load_dotenv(dotenv_path=env_path, override=False)
 
 
 class Settings(BaseSettings):
