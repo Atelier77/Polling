@@ -289,9 +289,7 @@ async getPolls(queryString: string = ''): Promise<any> {
     }
   },
 
-  // frontend/src/services/DataService.ts
-
-async getPollResults(pollId: number): Promise<any> {  // ← Временно any для отладки
+async getPollResults(pollId: number): Promise<any> {
   try {
     const token = localStorage.getItem('access_token');
     const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}/results`, {
@@ -301,34 +299,30 @@ async getPollResults(pollId: number): Promise<any> {  // ← Временно an
       }
     });
     
-    console.log('🔍 DataService: Response status', response.status);
+    console.log('DataService: Response status', response.status);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     
     const data = await response.json();
-    console.log('🔍 DataService: Raw response', data);  // ← Ключевой лог!
+    console.log('DataService: Raw response', data);
     
-    // 🔹 Проверка структуры ответа:
-    // Если бэкенд возвращает {"poll_id": ..., "options": [...]} напрямую:
     if (data.poll_id && Array.isArray(data.options)) {
-      console.log('✅ DataService: Returning data directly');
+      console.log('DataService: Returning data directly');
       return data;
     }
     
-    // Если бэкенд возвращает {"success": true, "data": {...}}:
     if (data.success && data.data) {
-      console.log('✅ DataService: Returning data.data');
+      console.log('DataService: Returning data.data');
       return data.data;
     }
     
-    // fallback
-    console.warn('⚠️ DataService: Unknown response format', data);
+    console.warn('DataService: Unknown response format', data);
     return data;
     
   } catch (error) {
-    console.error('❌ DataService: getPollResults error', error);
+    console.error('DataService: getPollResults error', error);
     throw error;
   }
 },
