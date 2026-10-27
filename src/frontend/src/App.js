@@ -36,10 +36,10 @@ function App() {
 
   const initializeAuth = async () => {
     try {
-      console.log('🔍 App: Initializing auth...');
+      console.log('App: Initializing auth...');
       
       const authStatus = await AuthService.checkAuth();
-      console.log('🔍 App: authStatus =', authStatus);
+      console.log('App: authStatus =', authStatus);
       
       setIsAuthenticated(authStatus);
       
@@ -47,8 +47,8 @@ function App() {
         const userData = AuthService.getCurrentUser();
         const role = AuthService.getUserRole();
         
-        console.log('🔍 App: userData from service =', userData);
-        console.log('🔍 App: role from service =', role);
+        console.log('App: userData from service =', userData);
+        console.log('App: role from service =', role);
         
         setUser(userData);
         setUserRole(role);
@@ -59,7 +59,7 @@ function App() {
       setUser(null);
       setUserRole(null);
     } finally {
-      console.log('🔍 App: initializeAuth finished, loading = false');
+      console.log('App: initializeAuth finished, loading = false');
       setLoading(false);
     }
   };
@@ -67,7 +67,7 @@ function App() {
   const handleLogin = async (studentId, password) => {
     try {
       setLoading(true);
-      console.log('🔍 App: Login attempt for', studentId);
+      console.log('App: Login attempt for', studentId);
       
       const result = await AuthService.login(studentId, password);
       
@@ -85,7 +85,7 @@ function App() {
         window.location.href = '/dashboard';
         
       } else {
-        console.warn('🔍 App: Login failed:', result.error);
+        console.warn('App: Login failed:', result.error);
       }
       return result;
     } catch (error) {

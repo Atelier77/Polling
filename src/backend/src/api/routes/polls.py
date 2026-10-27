@@ -1,6 +1,3 @@
-# mypy: disable-error-code="misc"
-# mypy: disable-error-code="list-item"
-
 from fastapi import APIRouter, HTTPException, status, Depends, Response
 from sqlalchemy import select, func, or_, desc, asc
 from datetime import datetime, timezone
