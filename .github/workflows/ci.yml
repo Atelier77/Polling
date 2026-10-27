@@ -224,7 +224,7 @@ jobs:
 
   deploy:
     name: Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -233,29 +233,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to GHCR (для деплоя)
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: 22
-          script: |
-            echo "Starting deployment on Windows..."
-            
-            cd /d C:\Courses\Course_3\FS
-            
-            echo "Pulling latest code..."
-            git pull origin main
-            
-            echo "Rebuilding and restarting containers..."
-            docker compose up -d --build
-            
-            echo "Deployment completed successfully!"
+      - name: Deploy locally
+        shell: cmd
+        run: |
+          echo "Starting deployment on local Windows machine..."
+          cd /d C:\Courses\Course_3\FS
+          
+          echo "Pulling latest code..."
+          git pull origin main
+          
+          echo "Rebuilding and restarting containers..."
+          docker compose up -d --build
+          
+          echo "Deployment completed successfully!"
