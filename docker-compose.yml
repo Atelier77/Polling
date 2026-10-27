@@ -23,8 +23,8 @@ services:
 
   backend:
     build:
-      context: ./src/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/backend/Dockerfile
     container_name: poll_system_backend
     ports:
       - "8000:8000"
@@ -58,8 +58,8 @@ services:
 
   frontend:
     build:
-      context: ./src/frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/frontend/Dockerfile
     container_name: poll_system_frontend
     ports:
       - "80:80"
@@ -68,9 +68,9 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    # volumes:
+    #   - ./src/frontend:/app
+    #   - /app/node_modules
     networks:
       - backend-net
 
