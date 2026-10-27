@@ -1,15 +1,15 @@
 FROM node:18-alpine AS builder
 
 WORKDIR /app
-COPY package*.json ./
+COPY src/frontend/package*.json ./
 RUN npm install
 
-COPY . .
+COPY src/frontend/ ./
 RUN npm run build
 
 FROM nginx:alpine
 COPY --from=builder /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY src/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:80/health || exit 1
