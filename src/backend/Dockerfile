@@ -14,7 +14,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY src/ ./src/
 COPY src/backend/tests/ ./tests/
-COPY pytest.ini ./
 
 RUN useradd --create-home --shell /bin/bash appuser && \
     chown -R appuser:appuser /app
