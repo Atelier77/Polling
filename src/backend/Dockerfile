@@ -12,13 +12,12 @@ COPY src/backend/pytest.ini ./pytest.ini
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY src/ ./src/
-COPY src/backend/tests/ ./tests/
+RUN useradd --create-home --shell /bin/bash appuser
 
-RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
+COPY --chown=appuser:appuser src/backend/src/ ./src/
+COPY --chown=appuser:appuser src/backend/tests/ ./tests/
 
 USER appuser
 EXPOSE 8000
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

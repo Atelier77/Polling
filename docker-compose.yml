@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5439:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -42,6 +42,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
       - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
       - ALGORITHM=${ALGORITHM}
     depends_on:
       postgres:
@@ -62,7 +63,7 @@ services:
       dockerfile: src/frontend/Dockerfile
     container_name: poll_system_frontend
     ports:
-      - "80:80"
+      - "86:80"
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL}
     depends_on:
