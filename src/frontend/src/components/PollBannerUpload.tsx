@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FileUpload} from './FileUpload';
 import { DataService } from '../services/DataService';
-import { FileInfo } from '../types/file';
+import { FileInfo} from '../types/file';
 import './PollBannerUpload.css';
 
 interface PollBannerUploadProps {
@@ -26,6 +26,14 @@ export const PollBannerUpload = ({
   const handleUploadSuccess = async (fileInfo: FileInfo) => {
     setUploading(true);
     setError(null);
+
+    console.log('Upload file info:', fileInfo);
+
+    if (!fileInfo || !fileInfo.file_id) {
+      setError('file_upload_id getting failure')
+      setUploading(false);
+      return;
+    }
     
     try {
       await DataService.request(`/api/polls/${pollId}/banner`, {

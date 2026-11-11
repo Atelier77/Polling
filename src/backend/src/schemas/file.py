@@ -5,8 +5,6 @@ from enum import Enum
 
 
 class FileCategory(str, Enum):
-    """Категории файлов для привязки к сущностям"""
-
     BANNER = "banner"
     AVATAR = "avatar"
     ATTACHMENT = "attachment"
@@ -14,8 +12,6 @@ class FileCategory(str, Enum):
 
 
 class FileType(str, Enum):
-    """Типы файлов по MIME-type"""
-
     IMAGE_JPEG = "image/jpeg"
     IMAGE_PNG = "image/png"
     IMAGE_GIF = "image/gif"
@@ -28,8 +24,6 @@ class FileType(str, Enum):
 
 
 class FileUploadParams(BaseModel):
-    """Параметры для загрузки файла"""
-
     entity_type: str = Field(
         ..., min_length=1, max_length=50, description="Тип сущности (poll, user, etc.)"
     )
@@ -48,8 +42,6 @@ class FileUploadParams(BaseModel):
 
 
 class FileUploadResponse(BaseModel):
-    """Ответ после успешной загрузки файла"""
-
     success: bool = True
     file_id: int
     url: str
@@ -65,8 +57,6 @@ class FileUploadResponse(BaseModel):
 
 
 class FileInfo(BaseModel):
-    """Полная информация о файле"""
-
     file_id: int
     entity_type: str
     entity_id: int
@@ -92,8 +82,6 @@ class FileInfo(BaseModel):
 
 
 class FileMetadata(BaseModel):
-    """Метаданные файла (без URL)"""
-
     id: int
     entity_type: str
     entity_id: int
@@ -109,8 +97,6 @@ class FileMetadata(BaseModel):
 
 
 class FileListResponse(BaseModel):
-    """Список файлов с пагинацией"""
-
     items: List[FileInfo]
     total: int
     page: int
@@ -121,8 +107,6 @@ class FileListResponse(BaseModel):
 
 
 class FileDownloadResponse(BaseModel):
-    """Ответ для скачивания файла (pre-signed URL)"""
-
     file_id: int
     filename: str
     url: str
@@ -133,8 +117,6 @@ class FileDownloadResponse(BaseModel):
 
 
 class FileDeleteResponse(BaseModel):
-    """Ответ после удаления файла"""
-
     success: bool
     message: str
     file_id: int
@@ -143,8 +125,6 @@ class FileDeleteResponse(BaseModel):
 
 
 class FileConstraints(BaseModel):
-    """Ограничения на загрузку файлов"""
-
     max_size_mb: int = Field(default=10, description="Максимальный размер в МБ")
     max_size_bytes: int = Field(
         default=10485760, description="Максимальный размер в байтах"
@@ -168,8 +148,6 @@ class FileConstraints(BaseModel):
 
 
 class FileUploadProgress(BaseModel):
-    """Прогресс загрузки файла (для WebSocket/streaming)"""
-
     file_id: Optional[int] = None
     filename: str
     uploaded_bytes: int
@@ -189,8 +167,6 @@ class FileUploadProgress(BaseModel):
 
 
 class FileEntityRelation(BaseModel):
-    """Связь файла с сущностью"""
-
     file_id: int
     entity_type: str
     entity_id: int
