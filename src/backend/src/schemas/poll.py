@@ -24,7 +24,6 @@ class SortOrder(str, Enum):
 
 
 class PollListParams(BaseModel):
-
     search: Optional[str] = Field(
         None, min_length=1, max_length=100, description="Поиск по названию/описанию"
     )
@@ -51,9 +50,7 @@ class PollListParams(BaseModel):
         return v
 
 
-
 class OptionCreate(BaseModel):
-
     text: str = Field(
         ..., min_length=1, max_length=500, description="Текст варианта ответа"
     )
@@ -67,7 +64,6 @@ class OptionCreate(BaseModel):
 
 
 class PollCreate(BaseModel):
-
     title: str = Field(..., min_length=5, max_length=200, description="Название опроса")
     description: str = Field(
         ..., min_length=10, max_length=1000, description="Описание опроса"
@@ -77,7 +73,6 @@ class PollCreate(BaseModel):
         ..., min_length=2, description="Варианты ответов (минимум 2)"
     )
 
-    
     @field_validator("end_date", mode="before")
     @classmethod
     def validate_end_date(cls, v):
@@ -115,7 +110,6 @@ class PollCreate(BaseModel):
 
 
 class PollUpdate(BaseModel):
-
     title: Optional[str] = Field(None, min_length=5, max_length=200)
     description: Optional[str] = Field(None, min_length=10, max_length=1000)
     end_date: Optional[datetime] = None
@@ -145,7 +139,6 @@ class PollUpdate(BaseModel):
 
 
 class OptionResponse(BaseModel):
-
     id: int
     text: str
     votes: int = 0
@@ -228,6 +221,7 @@ class PollBrief(BaseModel):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class BannerUpdateRequest(BaseModel):
     banner_file_id: int

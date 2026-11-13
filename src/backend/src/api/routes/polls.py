@@ -14,10 +14,9 @@ from src.schemas.poll import (
     PaginatedResponse,
     PollResultsResponse,
     PollUpdate,
-    BannerUpdateRequest
+    BannerUpdateRequest,
 )
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
-from fastapi import Form
 
 router = APIRouter()
 
@@ -371,7 +370,7 @@ async def get_active_polls(db: DatabaseDep):
         )
 
 
-#Мягкое удаление опроса (только админ) Опрос помечается как удалённый, но не стирается из БД. Возвращает 410 Gone при попытке доступа.
+# Мягкое удаление опроса (только админ) Опрос помечается как удалённый, но не стирается из БД. Возвращает 410 Gone при попытке доступа.
 @router.delete("/{poll_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_poll(poll_id: int, db: DatabaseDep, admin_id: CurrentAdmin):
     poll = await db.get(Poll, poll_id)
