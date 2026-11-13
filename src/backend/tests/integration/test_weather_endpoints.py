@@ -8,8 +8,6 @@ pytest_plugins = ["pytest_httpx"]
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestWeatherEndpoints:
-    """Тесты маршрутов погоды с мокированием внешнего API"""
-
     async def test_weather_success_mock(self, client: AsyncClient, httpx_mock):
 
         httpx_mock.add_response(
@@ -45,7 +43,6 @@ class TestWeatherEndpoints:
         assert data["is_fallback"] is False
 
     async def test_weather_api_failure(self, client: AsyncClient, httpx_mock):
-        """Тест обработки ошибки внешнего API (fallback-режим)"""
 
         httpx_mock.add_response(
             url=re.compile(r"https://api\.openweathermap\.org/data/2\.5/weather\?.*"),
