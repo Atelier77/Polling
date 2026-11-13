@@ -97,3 +97,5 @@ networks:
 volumes:
   postgres_data:
   minio_data:
+
+  ##TODO: вынести порты в секреты
