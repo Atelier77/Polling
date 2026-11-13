@@ -1,4 +1,5 @@
 export interface FileInfo {
+  success?: boolean;
   file_id: number;
   url: string;
   filename: string;

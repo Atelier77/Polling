@@ -6,12 +6,9 @@ from datetime import datetime, timezone, timedelta
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestFileEndpoints:
-    """Тесты привязки баннеров к опросам (через banner_file_id)"""
-
     async def test_upload_banner_admin_success(
         self, admin_client: AsyncClient, test_banner_file
     ):
-        """Администратор может привязать баннер к опросу"""
 
         test_poll_data = {
             "title": "Test Poll for Banner",
@@ -45,7 +42,7 @@ class TestFileEndpoints:
             pytest.skip("Could not extract poll_id from create response")
 
         response = await admin_client.put(
-            f"/api/polls/{poll_id}/banner", data={"banner_file_id": test_banner_file.id}
+            f"/api/polls/{poll_id}/banner", json={"banner_file_id": test_banner_file.id}
         )
 
         assert response.status_code in [200, 201, 204], (
@@ -67,7 +64,6 @@ class TestFileEndpoints:
     async def test_upload_banner_user_forbidden(
         self, authenticated_client: AsyncClient, test_banner_file
     ):
-        """Обычный пользователь НЕ может привязывать баннеры (ожидаем 403)"""
 
         test_poll_data = {
             "title": "User Test Poll",
@@ -100,7 +96,7 @@ class TestFileEndpoints:
             pytest.skip("Could not extract poll_id")
 
         response = await authenticated_client.put(
-            f"/api/polls/{poll_id}/banner", data={"banner_file_id": test_banner_file.id}
+            f"/api/polls/{poll_id}/banner", json={"banner_file_id": test_banner_file.id}
         )
 
         assert response.status_code in [401, 403], (

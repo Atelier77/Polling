@@ -14,15 +14,14 @@ from src.schemas.poll import (
     PaginatedResponse,
     PollResultsResponse,
     PollUpdate,
+    BannerUpdateRequest,
 )
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
-from fastapi import Form
 
 router = APIRouter()
 
 
 def _base_poll_query():
-    """Базовый запрос, исключающий мягко удалённые опросы"""
     return select(Poll).where(~Poll.is_deleted)
 
 
@@ -32,9 +31,6 @@ async def get_polls(
     current_user: CurrentUser,
     params: PollListParams = Depends(),
 ):
-    """
-    Получить список опросов с фильтрацией, поиском, сортировкой и пагинацией
-    """
     try:
         query = _base_poll_query()
 
@@ -124,7 +120,6 @@ async def get_polls(
 async def create_new_poll(
     poll_data: PollCreate, db: DatabaseDep, admin_id: CurrentAdmin
 ):
-    """Создание нового опроса (только админ)"""
     try:
         if not poll_data.title or not isinstance(poll_data.title, str):
             raise HTTPException(400, "Заголовок обязателен")
@@ -187,7 +182,6 @@ async def create_new_poll(
 
 @router.get("/{poll_id}", response_model=PollResponse)
 async def get_poll(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
-    """Получить опрос по ID"""
     try:
         result = await db.execute(
             select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted)
@@ -241,7 +235,6 @@ async def get_poll(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
 
 @router.get("/{poll_id}/results", response_model=PollResultsResponse)
 async def get_poll_results(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
-    """Получить результаты голосования по опросу"""
     try:
         poll_result = await db.execute(
             select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted)
@@ -315,8 +308,6 @@ async def get_poll_results(poll_id: int, db: DatabaseDep, current_user: CurrentU
 async def update_poll(
     poll_id: int, poll_data: PollUpdate, db: DatabaseDep, admin_id: CurrentAdmin
 ):
-    """Обновление опроса (только админ)"""
-
     poll = await db.execute(select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted))
     poll = poll.scalar_one_or_none()
 
@@ -337,7 +328,6 @@ async def update_poll(
 
 @router.get("/active")
 async def get_active_polls(db: DatabaseDep):
-    """Получить только активные опросы (еще не завершившиеся)"""
     try:
         current_time = datetime.now(timezone.utc)
 
@@ -380,14 +370,9 @@ async def get_active_polls(db: DatabaseDep):
         )
 
 
+# Мягкое удаление опроса (только админ) Опрос помечается как удалённый, но не стирается из БД. Возвращает 410 Gone при попытке доступа.
 @router.delete("/{poll_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_poll(poll_id: int, db: DatabaseDep, admin_id: CurrentAdmin):
-    """
-    Мягкое удаление опроса (только админ)
-    Опрос помечается как удалённый, но не стирается из БД.
-    Возвращает 410 Gone при попытке доступа.
-    """
-
     poll = await db.get(Poll, poll_id)
 
     if not poll:
@@ -396,7 +381,7 @@ async def delete_poll(poll_id: int, db: DatabaseDep, admin_id: CurrentAdmin):
     if poll.is_deleted:
         return Response(status_code=204)
 
-    # Защита от удаления опросов с голосами (закомментировано)
+    # Защита от удаления опросов с голосами
     # votes_count = await db.execute(
     #     select(func.count()).select_from(Vote).where(Vote.poll_id == poll_id)
     # )
@@ -419,11 +404,10 @@ async def update_poll_banner(
     poll_id: int,
     db: DatabaseDep,
     current_admin: CurrentAdmin,
-    banner_file_id: int = Form(...),
+    banner_data: BannerUpdateRequest,
 ):
-    """Привязать существующий файл-баннер к опросу"""
     try:
-        from src.models.file import FileMetadata
+        banner_file_id = banner_data.banner_file_id
 
         file_meta = await db.get(FileMetadata, banner_file_id)
         if not file_meta:

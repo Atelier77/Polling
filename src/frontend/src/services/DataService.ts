@@ -510,14 +510,22 @@ async uploadFile(
       });
       
       xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve({ success: true, file: response as FileInfo });
-          } catch (parseError) {
-            console.error('Failed to parse upload response:', parseError);
-            resolve({ success: true });
-          }
+  if (xhr.status >= 200 && xhr.status < 300) {
+    try {
+      const response = JSON.parse(xhr.responseText);
+      // Бэкенд возвращает объект с полем success и всеми данными файла
+      // Нам нужно передать дальше чистый объект файла.
+      // Если бэкенд возвращает { success: true, file_id: 1, ... }, 
+      // то мы просто убираем success или оставляем как есть, 
+      // главное чтобы file_id был на верхнем уровне.
+      resolve({ 
+        success: true, 
+        file: response as FileInfo 
+      });
+    } catch (parseError) {
+      console.error('Failed to parse upload response:', parseError);
+      resolve({ success: false, error: 'Ошибка парсинга ответа сервера' });
+    }
         } else {
           try {
             const errorData = JSON.parse(xhr.responseText);

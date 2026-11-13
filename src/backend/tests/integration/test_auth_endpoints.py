@@ -21,7 +21,6 @@ class TestAuthEndpoints:
             assert data["access_token"] is not None
 
     async def test_register_duplicate(self, client: AsyncClient, test_user_data):
-        """Регистрация с дублирующимся student_id"""
         await client.post("/api/auth/register", json=test_user_data)
 
         response = await client.post("/api/auth/register", json=test_user_data)
@@ -34,7 +33,6 @@ class TestAuthEndpoints:
         )
 
     async def test_login_success(self, client: AsyncClient, test_user_data):
-        """Успешный вход"""
         await client.post("/api/auth/register", json=test_user_data)
 
         response = await client.post(
@@ -56,7 +54,6 @@ class TestAuthEndpoints:
             assert data["access_token"] is not None
 
     async def test_login_wrong_password(self, client: AsyncClient, test_user_data):
-        """Вход с неверным паролем"""
         await client.post("/api/auth/register", json=test_user_data)
 
         response = await client.post(
@@ -72,7 +69,6 @@ class TestAuthEndpoints:
         )
 
     async def test_refresh_token_success(self, client: AsyncClient, test_user_data):
-        """Обновление токена"""
         reg = await client.post("/api/auth/register", json=test_user_data)
         reg_data = reg.json()
 
@@ -95,7 +91,6 @@ class TestAuthEndpoints:
             assert data["access_token"] is not None
 
     async def test_refresh_token_invalid(self, client: AsyncClient):
-        """Обновление с невалидным токеном"""
         response = await client.post(
             "/api/auth/refresh?refresh_token=invalid_token_xyz"
         )

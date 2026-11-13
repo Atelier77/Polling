@@ -6,8 +6,6 @@ from datetime import datetime, timezone, timedelta
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestVoteEndpoints:
-    """Тесты голосования и получения результатов"""
-
     async def _setup_poll(self, client: AsyncClient, admin_data, user_data, poll_data):
 
         admin_reg = await client.post("/api/auth/register/", json=admin_data)
@@ -82,7 +80,6 @@ class TestVoteEndpoints:
     async def test_vote_success(
         self, client: AsyncClient, test_admin_data, test_user_data, test_poll_data
     ):
-        """Пользователь может проголосовать"""
 
         poll_id, option_id, user_token = await self._setup_poll(
             client, test_admin_data, test_user_data, test_poll_data
@@ -105,7 +102,6 @@ class TestVoteEndpoints:
     async def test_vote_duplicate_forbidden(
         self, client: AsyncClient, test_admin_data, test_user_data, test_poll_data
     ):
-        """Нельзя проголосовать дважды за один опрос"""
 
         poll_id, option_id, user_token = await self._setup_poll(
             client, test_admin_data, test_user_data, test_poll_data

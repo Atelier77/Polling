@@ -1,20 +1,10 @@
-# src/schemas/poll.py
-"""Схемы Pydantic для работы с опросами"""
-
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List, Generic, TypeVar
 from datetime import datetime, timezone
 from enum import Enum
 
 
-# =============================================================================
-# 🔹 ENUMS
-# =============================================================================
-
-
 class PollStatus(str, Enum):
-    """Статусы опроса для фильтрации"""
-
     ALL = "all"
     ACTIVE = "active"
     EXPIRED = "expired"
@@ -22,8 +12,6 @@ class PollStatus(str, Enum):
 
 
 class SortField(str, Enum):
-    """Поля для сортировки"""
-
     CREATED_AT = "created_at"
     TOTAL_VOTES = "total_votes"
     END_DATE = "end_date"
@@ -31,20 +19,11 @@ class SortField(str, Enum):
 
 
 class SortOrder(str, Enum):
-    """Порядок сортировки"""
-
     ASC = "asc"
     DESC = "desc"
 
 
-# =============================================================================
-# 🔹 ПАРАМЕТРЫ ЗАПРОСА
-# =============================================================================
-
-
 class PollListParams(BaseModel):
-    """Параметры для получения списка опросов"""
-
     search: Optional[str] = Field(
         None, min_length=1, max_length=100, description="Поиск по названию/описанию"
     )
@@ -66,20 +45,12 @@ class PollListParams(BaseModel):
     @field_validator("search")
     @classmethod
     def sanitize_search(cls, v: Optional[str]) -> Optional[str]:
-        """Экранирование специальных символов для LIKE запроса"""
         if v:
             return v.replace("%", r"\%").replace("_", r"\_").strip()
         return v
 
 
-# =============================================================================
-# 🔹 СХЕМЫ ДЛЯ СОЗДАНИЯ/ОБНОВЛЕНИЯ
-# =============================================================================
-
-
 class OptionCreate(BaseModel):
-    """Схема для создания варианта ответа"""
-
     text: str = Field(
         ..., min_length=1, max_length=500, description="Текст варианта ответа"
     )
@@ -93,8 +64,6 @@ class OptionCreate(BaseModel):
 
 
 class PollCreate(BaseModel):
-    """Схема для создания опроса"""
-
     title: str = Field(..., min_length=5, max_length=200, description="Название опроса")
     description: str = Field(
         ..., min_length=10, max_length=1000, description="Описание опроса"
@@ -104,53 +73,35 @@ class PollCreate(BaseModel):
         ..., min_length=2, description="Варианты ответов (минимум 2)"
     )
 
-    # =====================================================================
-    # 🔹 ВАЛИДАТОР ДАТЫ (исправленный — mode='before' + timezone-aware)
-    # =====================================================================
     @field_validator("end_date", mode="before")
     @classmethod
     def validate_end_date(cls, v):
-        """
-        Проверяет, что дата окончания в будущем.
-
-        🔹 mode='before' — обрабатывает значение ДО парсинга Pydantic
-        🔹 Гарантирует, что сравнение происходит между timezone-aware datetime
-        """
         if v is None:
             return v
 
-        # 🔹 Если строка — парсим с обработкой часового пояса
         if isinstance(v, str):
-            # Заменяем 'Z' на '+00:00' для совместимости с fromisoformat
             v = v.replace("Z", "+00:00")
             try:
                 v = datetime.fromisoformat(v)
             except ValueError:
-                # Fallback: парсим базовый формат и добавляем UTC
                 v = datetime.strptime(v[:19], "%Y-%m-%dT%H:%M:%S")
                 v = v.replace(tzinfo=timezone.utc)
 
-        # 🔹 Гарантируем, что результат — timezone-aware datetime
         if hasattr(v, "tzinfo") and v.tzinfo is None:
             v = v.replace(tzinfo=timezone.utc)
 
-        # 🔹 Теперь сравнение безопасно: оба datetime — aware
         now = datetime.now(timezone.utc)
         if v <= now:
             raise ValueError("Дата окончания должна быть в будущем")
 
         return v
 
-    # =====================================================================
-    # 🔹 ВАЛИДАТОР ОПЦИЙ
-    # =====================================================================
     @field_validator("options")
     @classmethod
     def validate_options(cls, v: List[OptionCreate]) -> List[OptionCreate]:
         if len(v) < 2:
             raise ValueError("Должно быть минимум 2 варианта ответа")
 
-        # Проверка уникальности текстов опций (без учёта регистра)
         texts = [opt.text.lower().strip() for opt in v]
         if len(texts) != len(set(texts)):
             raise ValueError("Варианты ответов должны быть уникальными")
@@ -159,22 +110,13 @@ class PollCreate(BaseModel):
 
 
 class PollUpdate(BaseModel):
-    """Схема для обновления опроса"""
-
     title: Optional[str] = Field(None, min_length=5, max_length=200)
     description: Optional[str] = Field(None, min_length=10, max_length=1000)
     end_date: Optional[datetime] = None
 
-    # =====================================================================
-    # 🔹 ВАЛИДАТОР ДАТЫ (исправленный — такой же как в PollCreate)
-    # =====================================================================
     @field_validator("end_date", mode="before")
     @classmethod
     def validate_end_date(cls, v):
-        """
-        Проверяет, что дата окончания в будущем.
-        Работает с Optional[datetime] — пропускает None.
-        """
         if v is None:
             return v
 
@@ -196,14 +138,7 @@ class PollUpdate(BaseModel):
         return v
 
 
-# =============================================================================
-# 🔹 СХЕМЫ ОТВЕТОВ
-# =============================================================================
-
-
 class OptionResponse(BaseModel):
-    """Схема для варианта ответа в ответе"""
-
     id: int
     text: str
     votes: int = 0
@@ -212,8 +147,6 @@ class OptionResponse(BaseModel):
 
 
 class PollResponse(BaseModel):
-    """Схема для ответа с данными опроса"""
-
     id: int
     title: str
     description: str
@@ -228,8 +161,6 @@ class PollResponse(BaseModel):
 
 
 class OptionResult(BaseModel):
-    """Результат варианта ответа с процентами"""
-
     id: int
     text: str = ""
     votes: int = 0
@@ -239,8 +170,6 @@ class OptionResult(BaseModel):
 
 
 class PollResultsResponse(BaseModel):
-    """Схема для ответа с результатами опроса"""
-
     poll_id: int
     title: str
     description: str
@@ -255,22 +184,10 @@ class PollResultsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# =============================================================================
-# 🔹 УНИВЕРСАЛЬНЫЕ СХЕМЫ
-# =============================================================================
-
 T = TypeVar("T")
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
-    """
-    Универсальная схема для пагинированных ответов
-
-    Пример использования:
-    - PaginatedResponse[PollResponse]
-    - PaginatedResponse[UserResponse]
-    """
-
     items: List[T]
     total: int
     page: int
@@ -288,8 +205,6 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 
 class PollStats(BaseModel):
-    """Статистика опроса"""
-
     total_polls: int
     active_polls: int
     expired_polls: int
@@ -299,8 +214,6 @@ class PollStats(BaseModel):
 
 
 class PollBrief(BaseModel):
-    """Краткая информация об опросе (для списков)"""
-
     id: int
     title: str
     end_date: datetime
@@ -308,3 +221,7 @@ class PollBrief(BaseModel):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BannerUpdateRequest(BaseModel):
+    banner_file_id: int

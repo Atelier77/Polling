@@ -6,8 +6,6 @@ from datetime import datetime, timezone, timedelta
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestPollEndpoints:
-    """Тесты CRUD для опросов"""
-
     async def test_create_poll_admin_success(self, admin_client: AsyncClient):
 
         test_poll_data = {
@@ -44,7 +42,6 @@ class TestPollEndpoints:
         )
 
     async def test_create_poll_user_forbidden(self, authenticated_client: AsyncClient):
-        """Обычный пользователь НЕ может создавать опросы"""
 
         test_poll_data = {
             "title": "User Poll",
@@ -60,7 +57,6 @@ class TestPollEndpoints:
         )
 
     async def test_create_poll_min_options(self, admin_client: AsyncClient):
-        """Нельзя создать опрос с менее чем 2 вариантами"""
 
         test_poll_data = {
             "title": "Test Poll Title Here",
@@ -102,7 +98,6 @@ class TestPollEndpoints:
             assert isinstance(resp_data, list) or "polls" in resp_data
 
     async def test_get_poll_by_id(self, admin_client: AsyncClient):
-        """Можно получить опрос по ID"""
 
         test_poll_data = {
             "title": "Test Poll for Fetch",
@@ -138,7 +133,6 @@ class TestPollEndpoints:
         )
 
     async def test_get_poll_not_found(self, admin_client: AsyncClient):
-        """Получение несуществующего опроса возвращает 404"""
 
         response = await admin_client.get("/api/polls/999999")
 
@@ -147,7 +141,6 @@ class TestPollEndpoints:
         )
 
     async def test_delete_poll_admin(self, admin_client: AsyncClient):
-        """Администратор может удалить опрос"""
 
         test_poll_data = {
             "title": "Test Poll for Delete",
