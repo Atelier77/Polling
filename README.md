@@ -23,3 +23,51 @@ docker-compose up -d --build
 | **FR-5** | Голосование в опросе | Обязательно | Уже есть |
 | **FR-6** | Удаление опроса (Админ) | Обязательно | Нужно доработать |
 | **FR-7** | Просмотр результатов и проверка голоса | Желательно | Уже есть |
+
+## Тестирование
+
+Для запуска автоматических тестов локально выполните следующие команды из корня репозитория:
+
+```bash
+# Переход в директорию
+cd src/backend
+
+# Запуск теста
+python -m pytest tests/integration/test_poll_endpoints.py
+```
+
+**Демонстрация .github/workflows/ci.yml**
+```
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  ```
+
+**Демонстрация добавленного линтера(ruff) и проверки типизации(mypy)**
+```
+  - name: Run linter (ruff)
+        working-directory: ./src/backend
+        run: |
+          ruff check src/ tests/ --exit-zero
+          ruff format src/ tests/ --check --diff
+
+      - name: Run type checker (mypy)
+        working-directory: ./src/backend
+        run: |
+          mypy src/ \
+            --ignore-missing-imports \
+            --pretty \
+            --disable-error-code=assignment \
+            --disable-error-code=attr-defined \
+            --disable-error-code=return-value \
+            --disable-error-code=arg-type \
+            --disable-error-code=call-arg \
+            --disable-error-code=misc \
+            --disable-error-code=list-item \
+            --disable-error-code=annotation-unchecked
+```
