@@ -67,7 +67,7 @@ class TestPollEndpoints:
 
         response = await admin_client.post("/api/polls/", json=test_poll_data)
 
-        assert response.status_code == 201, (
+        assert response.status_code in [400, 422], (
             f"Expected 400/422 for validation error, got {response.status_code}"
         )
 

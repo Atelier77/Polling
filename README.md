@@ -71,3 +71,42 @@ on:
             --disable-error-code=list-item \
             --disable-error-code=annotation-unchecked
 ```
+
+**Тест даст ошибку**
+```
+ async def test_create_poll_min_options(self, admin_client: AsyncClient):
+
+        test_poll_data = {
+            "title": "Test Poll Title Here",
+            "description": "Test description for poll",
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "options": [{"text": "Only one"}],
+        }
+
+        response = await admin_client.post("/api/polls/", json=test_poll_data)
+
+        assert response.status_code == 201, (
+            f"Expected 400/422 for validation error, got {response.status_code}"
+        )
+```
+
+https://github.com/Atelier77/Polling/actions/runs/45422236614/job/138544965307?pr=11
+
+**Успешный тест**
+
+```
+async def test_create_poll_min_options(self, admin_client: AsyncClient):
+
+        test_poll_data = {
+            "title": "Test Poll Title Here",
+            "description": "Test description for poll",
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "options": [{"text": "Only one"}],
+        }
+
+        response = await admin_client.post("/api/polls/", json=test_poll_data)
+
+        assert response.status_code in [400, 422], (
+            f"Expected 400/422 for validation error, got {response.status_code}"
+        )
+```
